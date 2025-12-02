@@ -43,7 +43,12 @@
 
 ### 📧 Quick Demo: Dictating an Email
 
-https://github.com/akshayaggarwal99/jarvis-ai-assistant/raw/main/assets/demo-video/email_demo_trimmed.mp4
+<p align="center">
+  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/raw/main/assets/demo-video/email_demo_trimmed.mp4">
+    <img src="assets/demo-thumbnail.png" alt="Watch Demo" width="600"/>
+  </a>
+</p>
+<p align="center"><em>👆 Click to watch the demo video</em></p>
 
 > *Hold Fn → Speak → Release → Text appears instantly!*
 
