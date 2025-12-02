@@ -67,14 +67,12 @@ firebase-debug.log
 data/memory/*.json
 
 # Private deployment scripts (not for open source)
-/scripts/
-scripts/deployment/
-scripts/firebase/
-scripts/notarization/
-scripts/release/
-scripts/subscription/
-scripts/testing/
-scripts/utilities/
+scripts/notarization/.env.signing
+
+# Unnecessary root-level scripts (duplicates or dev-only)
+/update-server.js
+/update-metadata.js
+/create-dmg.sh
 
 # Certificates and signing
 certificates/
