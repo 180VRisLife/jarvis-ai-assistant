@@ -11,6 +11,12 @@ release/
 *.zip
 *.blockmap
 
+# Node-gyp generated files (regenerated on npm install)
+build/Makefile
+build/config.gypi
+build/Release/
+build/*.target.mk
+
 # Environment variables
 .env
 .env.local

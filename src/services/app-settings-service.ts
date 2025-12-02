@@ -9,6 +9,8 @@ interface AppSettings {
   hotkey: string;
   aiPostProcessing: boolean;
   useDeepgramStreaming: boolean;
+  useLocalWhisper: boolean; // Use local Whisper model for offline transcription
+  localWhisperModel: string; // Selected local Whisper model (tiny.en, base.en, small.en, etc.)
   privacyConsentGiven: boolean; // User has explicitly consented to third-party data processing
   privacyConsentDate?: string; // When consent was given
   // API Keys (stored locally, never uploaded)
@@ -46,6 +48,8 @@ export class AppSettingsService {
       hotkey: 'fn',
       aiPostProcessing: true,
       useDeepgramStreaming: true,
+      useLocalWhisper: false, // Off by default, user can enable for offline mode
+      localWhisperModel: 'tiny.en', // Default to fastest English model
       privacyConsentGiven: false // User must explicitly consent
     };
   }
@@ -88,6 +92,8 @@ export class AppSettingsService {
    * Get all current settings
    */
   public getSettings(): AppSettings {
+    // Always reload from disk to get fresh settings
+    this.settings = this.loadSettings();
     return { ...this.settings };
   }
 

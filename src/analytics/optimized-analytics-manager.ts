@@ -115,6 +115,9 @@ export class OptimizedAnalyticsManager extends EventEmitter {
     this.pendingUpdates.characters += characterCount;
     this.pendingUpdates.timeSaved += timeSaved;
 
+    // Calculate WPM for this session (words per minute based on audio length)
+    const sessionWPM = audioLengthMs > 0 ? Math.round((wordCount / audioLengthMs) * 60000) : 0;
+
     // Update cached stats immediately for instant UI updates
     if (!this.cachedStats) {
       // Initialize default stats if not cached
@@ -127,8 +130,9 @@ export class OptimizedAnalyticsManager extends EventEmitter {
         estimatedTimeSavedMs: 0,
         lastActiveDate: new Date(),
         streakDays: 0,
-        createdAt: new Date()
-      };
+        createdAt: new Date(),
+        _totalAudioMs: 0 // Internal tracking for WPM calculation
+      } as any;
       Logger.info('📊 [Analytics] Initialized default cached stats for real-time updates');
     }
     
@@ -136,6 +140,15 @@ export class OptimizedAnalyticsManager extends EventEmitter {
     this.cachedStats.totalWords += wordCount;
     this.cachedStats.totalCharacters += characterCount;
     this.cachedStats.estimatedTimeSavedMs += timeSaved;
+    
+    // Update average WPM using cumulative audio time
+    const cachedStatsWithAudio = this.cachedStats as any;
+    cachedStatsWithAudio._totalAudioMs = (cachedStatsWithAudio._totalAudioMs || 0) + audioLengthMs;
+    if (cachedStatsWithAudio._totalAudioMs > 0) {
+      this.cachedStats.averageWPM = Math.round((this.cachedStats.totalWords / cachedStatsWithAudio._totalAudioMs) * 60000);
+    }
+    
+    Logger.info(`📊 [Analytics] Session WPM: ${sessionWPM}, Average WPM: ${this.cachedStats.averageWPM}`);
     
     // Emit stats update event for real-time dashboard updates
     Logger.info(`📊 [Analytics] About to emit stats-update event with sessions: ${this.cachedStats.totalSessions}`);
@@ -236,17 +249,29 @@ export class OptimizedAnalyticsManager extends EventEmitter {
     if (recentSessions && recentSessions.length > 0) {
       const recentSavings = TimeSavingsCalculator.calculateCumulativeSavings(recentSessions);
       
+      // Calculate average WPM from sessions
+      let totalWords = 0;
+      let totalAudioMs = 0;
+      for (const session of recentSessions) {
+        totalWords += session.wordCount || 0;
+        totalAudioMs += session.metadata?.audioLengthMs || 0;
+      }
+      const calculatedWPM = totalAudioMs > 0 ? Math.round((totalWords / totalAudioMs) * 60000) : 0;
+      
       this.cachedStats = {
         ...baseStats,
+        averageWPM: calculatedWPM,
         dailyTimeSaved: recentSavings.dailySavings,
         weeklyTimeSaved: recentSavings.weeklySavings,
         monthlyTimeSaved: recentSavings.monthlySavings,
         efficiencyMultiplier: recentSavings.averageEfficiency,
+        _totalAudioMs: totalAudioMs // Keep track for future calculations
       } as UserStats & {
         dailyTimeSaved: number;
         weeklyTimeSaved: number;
         monthlyTimeSaved: number;
         efficiencyMultiplier: number;
+        _totalAudioMs: number;
       };
     } else {
       this.cachedStats = baseStats;

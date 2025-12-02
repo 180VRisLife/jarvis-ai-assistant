@@ -121,6 +121,23 @@ export class FastAssistantTranscriber {
     // Ensure services are warmed up (usually already done in constructor)
     await this.warmUpServices();
 
+    // Check if local Whisper is enabled in settings
+    const settings = AppSettingsService.getInstance().getSettings();
+    Logger.info(`🎯 [FastAssistant] Settings check - useLocalWhisper: ${settings.useLocalWhisper}, localWhisperModel: ${settings.localWhisperModel}`);
+    
+    if (settings.useLocalWhisper === true) {
+      Logger.info('🎤 [FastAssistant] Local Whisper mode enabled - using offline transcription');
+      try {
+        const localResult = await this.transcribeWithLocalWhisper(audioBuffer);
+        if (localResult) {
+          return localResult;
+        }
+        Logger.warning('🎤 [FastAssistant] Local Whisper failed, falling back to cloud APIs');
+      } catch (error) {
+        Logger.warning('🎤 [FastAssistant] Local Whisper error, falling back to cloud APIs:', error);
+      }
+    }
+
     // Check if audio needs compression for long recordings (instead of chunking)
     const compressedTranscriber = this.getCompressedTranscriber();
     const needsCompression = compressedTranscriber.needsCompression(audioBuffer, audioDurationMs);
@@ -482,6 +499,42 @@ export class FastAssistantTranscriber {
       return null;
     } catch (error) {
       Logger.warning('Deepgram transcription failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Transcribe using local Whisper model (offline, no API needed)
+   */
+  private async transcribeWithLocalWhisper(audioBuffer: Buffer): Promise<{ text: string; isAssistant: boolean; model: string } | null> {
+    try {
+      const settings = AppSettingsService.getInstance().getSettings();
+      const modelId = settings.localWhisperModel || 'tiny.en';
+      
+      Logger.info(`🎤 [LocalWhisper] Starting local transcription with model: ${modelId}`);
+      const { LocalWhisperTranscriber } = await import('./local-whisper-transcriber');
+      const localWhisper = new LocalWhisperTranscriber();
+      
+      // Check if model is downloaded
+      if (!localWhisper.isModelDownloaded(modelId)) {
+        Logger.warning(`🎤 [LocalWhisper] Model ${modelId} not downloaded, attempting download...`);
+        const downloaded = await localWhisper.downloadModel(modelId, (percent, downloaded, total) => {
+          Logger.info(`🎤 [LocalWhisper] Downloading: ${percent}% (${downloaded}/${total} MB)`);
+        });
+        if (!downloaded) {
+          Logger.error(`🎤 [LocalWhisper] Failed to download model ${modelId}`);
+          return null;
+        }
+      }
+      
+      const result = await localWhisper.transcribeFromBuffer(audioBuffer, modelId);
+      
+      if (result) {
+        return await this.processTranscription(result.text, result.model);
+      }
+      return null;
+    } catch (error) {
+      Logger.warning('Local Whisper transcription failed:', error);
       return null;
     }
   }

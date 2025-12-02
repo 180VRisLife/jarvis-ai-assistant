@@ -131,6 +131,10 @@ DictationIPCHandlers.getInstance().registerHandlers();
 UpdateIPCHandlers.getInstance().setUpdateService(updateService);
 UpdateIPCHandlers.getInstance().registerHandlers();
 
+// Register nudge IPC handlers early (before dashboard loads)
+// Note: NudgeService will be set later when initialized
+NudgeIPCHandlers.getInstance().registerHandlers();
+
 Logger.info('📊 [IPC] IPC handlers registered at module initialization');
 // Dictation mode is now tracked in AppState service
 let soundPlayer = SoundPlayer.getInstance();
@@ -196,10 +200,8 @@ async function initializeJarvis() {
       userNudgeService = UserNudgeService.getInstance();
       Logger.info('◉ [Nudge] User nudge service initialized');
       
-      // Register nudge IPC handlers
-      const nudgeIPC = NudgeIPCHandlers.getInstance();
-      nudgeIPC.setNudgeService(userNudgeService);
-      nudgeIPC.registerHandlers();
+      // Set nudge service on already-registered IPC handlers
+      NudgeIPCHandlers.getInstance().setNudgeService(userNudgeService);
     }
   } catch (error) {
     Logger.error('Failed to initialize Jarvis Core:', error);
@@ -691,6 +693,10 @@ function startHotkeyMonitoring() {
   Logger.info(`⚙ [Hotkey] Starting monitoring - Full settings:`, allSettings);
   Logger.info(`⚙ [Hotkey] Current hotkey from settings: ${currentHotkey}`);
   
+  // Calculate if streaming should be enabled
+  const shouldUseStreaming = allSettings.useDeepgramStreaming && !allSettings.useLocalWhisper;
+  Logger.info(`⚙ [Hotkey] Streaming decision: useDeepgramStreaming=${allSettings.useDeepgramStreaming}, useLocalWhisper=${allSettings.useLocalWhisper}, shouldUseStreaming=${shouldUseStreaming}`);
+  
   // Initialize push-to-talk service (same for all keys)
   pushToTalkService = new PushToTalkService(
     analyticsManager,
@@ -726,7 +732,7 @@ function startHotkeyMonitoring() {
       waveformWindow?.webContents.send('partial-transcript', partialText);
     },
     allSettings.audioFeedback,
-    allSettings.useDeepgramStreaming // Use streaming based on settings
+    shouldUseStreaming // Use the pre-calculated value
   );
 
   // Set up DictationIPCHandlers with pushToTalkService and callbacks

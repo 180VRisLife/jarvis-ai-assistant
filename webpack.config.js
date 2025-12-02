@@ -240,7 +240,12 @@ module.exports = [
       // Exclude LangChain to reduce bundle size
       '@langchain/core': 'commonjs @langchain/core',
       '@langchain/openai': 'commonjs @langchain/openai',
-      '@langchain/langgraph': 'commonjs @langchain/langgraph'
+      '@langchain/langgraph': 'commonjs @langchain/langgraph',
+      // Exclude local Whisper / transformers.js packages (native modules)
+      '@xenova/transformers': 'commonjs @xenova/transformers',
+      'onnxruntime-node': 'commonjs onnxruntime-node',
+      'sharp': 'commonjs sharp',
+      'whisper-node-addon': 'commonjs whisper-node-addon'
     },
     node: {
       __dirname: false,

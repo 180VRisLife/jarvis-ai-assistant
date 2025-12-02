@@ -28,6 +28,18 @@ Press a hotkey, speak, and your words are transcribed and pasted instantly. No c
 
 **Fun fact:** Wispr Flow recently raised **$81 million USD** to build something similar. I built Jarvis in my spare time over 3 months and decided to open-source it for everyone. 🎉
 
+### 💸 Use Jarvis Completely FREE
+
+Unlike Wispr Flow ($10-$24/month with word limits), Jarvis can be used **100% free** with generous free tiers:
+
+| Service | Free Tier | Enough For |
+|---------|-----------|------------|
+| **Deepgram** | **$200 free credits** | ~3,000+ hours of transcription |
+| **Google Gemini** | **Unlimited free API** | AI formatting forever |
+| **Local Whisper** | **100% free** | Offline transcription, no API needed |
+
+> **No subscriptions. No word limits. No monthly fees.** Just get your free API keys and start using Jarvis!
+
 ---
 
 ## 📥 Download
@@ -53,8 +65,10 @@ Download the pre-built, signed & notarized DMG for your Mac:
 
 - 🎙️ **Voice Dictation** - Press Fn key, speak, release to transcribe and paste
 - ⚡ **Fast Transcription** - Uses Deepgram Nova-3 or OpenAI Whisper
+- 🔇 **Offline Mode** - Local Whisper tiny model for 100% offline transcription
 - 🤖 **AI Formatting** - Automatically formats your text with proper punctuation
 - 🔒 **Privacy First** - All API keys stored locally, no cloud accounts required
+- 💸 **Free to Use** - $200 Deepgram credits + free Gemini API = unlimited usage
 - 🎨 **Minimal UI** - Unobtrusive waveform overlay while recording
 - 📊 **Local Analytics** - Track your usage stats locally
 - 🖥️ **macOS Native** - Built with Electron, optimized for macOS
@@ -90,11 +104,27 @@ npm run dev
 
 You'll need at least one of these API keys (entered during onboarding):
 
-| Provider | Purpose | Get Key |
-|----------|---------|---------|
-| **OpenAI** | Whisper transcription + AI features | [Get API Key](https://platform.openai.com/api-keys) |
-| **Deepgram** | Fast real-time transcription | [Get API Key](https://console.deepgram.com/) |
-| **Google Gemini** | AI formatting (free tier available) | [Get API Key](https://makersuite.google.com/app/apikey) |
+| Provider | Purpose | Free Tier | Get Key |
+|----------|---------|-----------|---------|
+| **Deepgram** ⭐ | Fast real-time transcription | **$200 free credits** (~3,000+ hrs) | [Get Free Key](https://console.deepgram.com/) |
+| **Google Gemini** | AI formatting & cleanup | **Free unlimited** | [Get Free Key](https://makersuite.google.com/app/apikey) |
+| **OpenAI** | Whisper transcription + AI | Pay-as-you-go | [Get API Key](https://platform.openai.com/api-keys) |
+| **Local Whisper** | Offline transcription | **Free forever** | No key needed! |
+
+> **💡 Recommended free setup:** Deepgram (transcription) + Gemini (AI formatting) = completely free with no limits for typical users!
+
+---
+
+## 🆚 Jarvis vs Wispr Flow
+
+| Feature | **Jarvis** | Wispr Flow |
+|---------|------------|------------|
+| **Price** | **Free** | $10-$24/month |
+| **Word Limits** | **Unlimited** | Limited by plan |
+| **Offline Mode** | **Yes** (Local Whisper) | No |
+| **Privacy** | **Your keys, your data** | Cloud-based |
+| **Open Source** | **Yes** | No |
+| **Free Credits** | **$200 Deepgram + Free Gemini** | None |
 
 ---
 

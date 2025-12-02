@@ -127,6 +127,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveApiKeys: (keys: { openaiApiKey?: string; deepgramApiKey?: string; anthropicApiKey?: string; geminiApiKey?: string }) => 
     ipcRenderer.invoke('api-keys:save', keys),
   
+  // Whisper model management
+  whisperGetDownloadedModels: () => ipcRenderer.invoke('whisper:get-downloaded-models'),
+  whisperIsModelDownloaded: (modelId: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelId),
+  whisperDownloadModel: (modelId: string) => ipcRenderer.invoke('whisper:download-model', modelId),
+  onWhisperDownloadProgress: (callback: (data: { modelId: string; percent: number; downloadedMB: number; totalMB: number }) => void) => {
+    ipcRenderer.on('whisper:download-progress', (_event, data) => callback(data));
+  },
+  removeWhisperDownloadProgressListener: () => {
+    ipcRenderer.removeAllListeners('whisper:download-progress');
+  },
+  
   // Sound playback methods
   playSound: (soundType: string) => ipcRenderer.invoke('play-sound', soundType),
   

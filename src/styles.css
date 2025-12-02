@@ -52,6 +52,19 @@ body::-webkit-scrollbar,
   display: none;  /* Chrome, Safari and Opera */
 }
 
+/* Custom select styling for dark theme */
+select.dark-select,
+select {
+  background-color: rgba(0, 0, 0, 0.4) !important;
+  color: white !important;
+}
+
+select option {
+  background-color: #1f2937 !important;
+  color: white !important;
+  padding: 8px !important;
+}
+
 /* Material Icons */
 .material-icons-outlined {
   font-family: 'Material Icons Outlined';

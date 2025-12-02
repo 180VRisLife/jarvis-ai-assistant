@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { theme, themeComponents } from '../styles/theme';
 
+// Local Whisper model options
+const WHISPER_MODELS = [
+  { id: 'tiny.en', name: 'Tiny (English)', size: '75 MB', speed: 'Fastest' },
+  { id: 'tiny', name: 'Tiny (Multi)', size: '75 MB', speed: 'Fastest' },
+  { id: 'base.en', name: 'Base (English)', size: '142 MB', speed: 'Fast' },
+  { id: 'base', name: 'Base (Multi)', size: '142 MB', speed: 'Fast' },
+  { id: 'small.en', name: 'Small (English)', size: '466 MB', speed: 'Medium' },
+  { id: 'small', name: 'Small (Multi)', size: '466 MB', speed: 'Medium' },
+];
+
 const Settings: React.FC = () => {
   // Settings state
   const [showNudges, setShowNudges] = useState(true);
@@ -8,6 +18,8 @@ const Settings: React.FC = () => {
   const [audioFeedback, setAudioFeedback] = useState(true);
   const [showOnStartup, setShowOnStartup] = useState(false);
   const [aiPostProcessing, setAiPostProcessing] = useState(true);
+  const [useLocalWhisper, setUseLocalWhisper] = useState(false);
+  const [localWhisperModel, setLocalWhisperModel] = useState('tiny.en');
   
   // API Keys state
   const [openaiApiKey, setOpenaiApiKey] = useState('');
@@ -23,6 +35,11 @@ const Settings: React.FC = () => {
   const [isCustomizingHotkey, setIsCustomizingHotkey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Whisper model download state
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
 
   // Pre-defined hotkey options (single keys for push-to-talk)
   const presetHotkeys = [
@@ -55,6 +72,8 @@ const Settings: React.FC = () => {
           setAudioFeedback(appSettings.audioFeedback);
           setShowOnStartup(appSettings.showOnStartup);
           setAiPostProcessing(appSettings.aiPostProcessing);
+          setUseLocalWhisper(appSettings.useLocalWhisper ?? false);
+          setLocalWhisperModel(appSettings.localWhisperModel ?? 'tiny.en');
         }
         
         // Load API keys
@@ -71,6 +90,12 @@ const Settings: React.FC = () => {
         const nudgeSettings = await electronAPI.nudgeGetSettings();
         if (nudgeSettings) {
           setShowNudges(nudgeSettings.enabled);
+        }
+        
+        // Load downloaded whisper models
+        if (electronAPI.whisperGetDownloadedModels) {
+          const models = await electronAPI.whisperGetDownloadedModels();
+          setDownloadedModels(models || []);
         }
       }
     } catch (error) {
@@ -167,6 +192,73 @@ const Settings: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to update AI post-processing settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLocalWhisperToggle = async () => {
+    try {
+      setIsSaving(true);
+      const newValue = !useLocalWhisper;
+      const electronAPI = (window as any).electronAPI;
+      
+      if (electronAPI && electronAPI.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ useLocalWhisper: newValue });
+        setUseLocalWhisper(newValue);
+      }
+    } catch (error) {
+      console.error('Failed to update local Whisper settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleLocalWhisperModelChange = async (modelId: string) => {
+    try {
+      const electronAPI = (window as any).electronAPI;
+      
+      // Check if model is already downloaded
+      const isDownloaded = downloadedModels.includes(modelId);
+      
+      if (!isDownloaded && electronAPI?.whisperDownloadModel) {
+        // Start downloading
+        setDownloadingModel(modelId);
+        setDownloadProgress(0);
+        
+        // Set up progress listener
+        electronAPI.onWhisperDownloadProgress?.((data: { modelId: string; percent: number }) => {
+          if (data.modelId === modelId) {
+            setDownloadProgress(data.percent);
+          }
+        });
+        
+        // Download the model
+        const result = await electronAPI.whisperDownloadModel(modelId);
+        
+        // Clean up listener
+        electronAPI.removeWhisperDownloadProgressListener?.();
+        
+        if (!result?.success) {
+          console.error('Failed to download model');
+          setDownloadingModel(null);
+          return;
+        }
+        
+        // Update downloaded models list
+        setDownloadedModels(prev => [...prev, modelId]);
+        setDownloadingModel(null);
+      }
+      
+      // Save the model selection
+      setIsSaving(true);
+      if (electronAPI?.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ localWhisperModel: modelId });
+        setLocalWhisperModel(modelId);
+      }
+    } catch (error) {
+      console.error('Failed to update local Whisper model:', error);
+      setDownloadingModel(null);
     } finally {
       setIsSaving(false);
     }
@@ -275,6 +367,86 @@ const Settings: React.FC = () => {
                 aiPostProcessing ? 'translate-x-6' : 'translate-x-0.5'
               } ${theme.shadow.lg}`} />
             </button>
+          </div>
+
+          {/* Local Whisper (Offline Mode) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className={`font-medium ${theme.text.primary} mb-1`}>
+                  Local Whisper 
+                  <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-purple-500/10 text-purple-400 rounded-md border border-purple-500/20">
+                    Offline
+                  </span>
+                </h4>
+                <p className={`text-sm ${theme.text.tertiary}`}>Use Whisper model locally. No API key needed, works offline</p>
+              </div>
+              <button
+                onClick={handleLocalWhisperToggle}
+                className={`relative w-12 h-6 rounded-full transition-all duration-200 ${
+                  useLocalWhisper 
+                    ? `${theme.glass.secondary} border border-white/20` 
+                    : `${theme.glass.secondary} border border-white/10`
+                }`}
+              >
+                <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
+                  useLocalWhisper ? 'translate-x-6' : 'translate-x-0.5'
+                } ${theme.shadow.lg}`} />
+              </button>
+            </div>
+            
+            {/* Model Selection - Only show when Local Whisper is enabled */}
+            {useLocalWhisper && (
+              <div className={`${theme.glass.secondary} rounded-lg p-4 border border-white/5 mt-3`}>
+                <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
+                  Whisper Model
+                </label>
+                
+                {/* Download Progress Bar */}
+                {downloadingModel && (
+                  <div className="mb-3">
+                    <div className="flex justify-between text-xs text-white/60 mb-1">
+                      <span>Downloading {WHISPER_MODELS.find(m => m.id === downloadingModel)?.name}...</span>
+                      <span>{downloadProgress}%</span>
+                    </div>
+                    <div className="h-2 bg-black/40 rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
+                        style={{ width: `${downloadProgress}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                
+                <div className="relative">
+                  <select
+                    value={localWhisperModel}
+                    onChange={(e) => handleLocalWhisperModelChange(e.target.value)}
+                    disabled={!!downloadingModel}
+                    className={`w-full bg-black/40 rounded-xl px-4 py-3 text-white border border-white/20 focus:border-white/40 focus:outline-none transition-colors text-sm appearance-none ${downloadingModel ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                    style={{ backgroundColor: 'rgba(0, 0, 0, 0.4)' }}
+                  >
+                    {WHISPER_MODELS.map((model) => {
+                      const isDownloaded = downloadedModels.includes(model.id);
+                      return (
+                        <option key={model.id} value={model.id} className="bg-gray-900 text-white py-2">
+                          {model.name} - {model.size} ({model.speed}) {isDownloaded ? '✓' : '↓'}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {/* Custom dropdown arrow */}
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                    <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+                <p className={`text-xs ${theme.text.tertiary} mt-2`}>
+                  ✓ = downloaded, ↓ = needs download. Smaller models are faster but less accurate.
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </div>

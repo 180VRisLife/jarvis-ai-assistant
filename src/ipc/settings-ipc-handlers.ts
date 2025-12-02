@@ -63,10 +63,28 @@ export class SettingsIPCHandlers {
     // Update app settings (legacy)
     ipcMain.handle('app:update-settings', async (_, settings) => {
       try {
-        Logger.info('[SettingsIPC] Received app:update-settings:', settings);
+        Logger.info('[SettingsIPC] Received app:update-settings:', JSON.stringify(settings));
         const previousSettings = appSettings.getSettings();
         
         appSettings.updateSettings(settings);
+        
+        // Log if local whisper settings changed
+        if (settings.useLocalWhisper !== undefined) {
+          Logger.info(`[SettingsIPC] Local Whisper setting changed to: ${settings.useLocalWhisper}`);
+          // When local whisper is enabled, disable streaming mode
+          if (settings.useLocalWhisper && this.pushToTalkService) {
+            this.pushToTalkService.setStreamingMode(false);
+            Logger.info('[SettingsIPC] Streaming disabled due to Local Whisper enabled');
+          } else if (!settings.useLocalWhisper && this.pushToTalkService) {
+            // Re-enable streaming if local whisper is disabled and Deepgram streaming is enabled
+            const currentSettings = appSettings.getSettings();
+            this.pushToTalkService.setStreamingMode(currentSettings.useDeepgramStreaming);
+            Logger.info(`[SettingsIPC] Streaming mode restored to: ${currentSettings.useDeepgramStreaming}`);
+          }
+        }
+        if (settings.localWhisperModel !== undefined) {
+          Logger.info(`[SettingsIPC] Local Whisper model changed to: ${settings.localWhisperModel}`);
+        }
         
         // If hotkey setting changed, restart monitoring
         if (settings.hotkey !== undefined && settings.hotkey !== previousSettings.hotkey) {
@@ -105,8 +123,21 @@ export class SettingsIPCHandlers {
         if ('useDeepgramStreaming' in updates) {
           const currentSettings = appSettings.getSettings();
           if (this.pushToTalkService) {
-            this.pushToTalkService.setStreamingMode(currentSettings.useDeepgramStreaming);
-            Logger.info(`[SettingsIPC] Streaming mode updated - Deepgram: ${currentSettings.useDeepgramStreaming}`);
+            // Only enable streaming if local whisper is also disabled
+            const shouldStream = currentSettings.useDeepgramStreaming && !currentSettings.useLocalWhisper;
+            this.pushToTalkService.setStreamingMode(shouldStream);
+            Logger.info(`[SettingsIPC] Streaming mode updated - Deepgram: ${currentSettings.useDeepgramStreaming}, LocalWhisper: ${currentSettings.useLocalWhisper}, Streaming: ${shouldStream}`);
+          }
+        }
+        
+        // Handle local whisper changes - affects streaming mode
+        if ('useLocalWhisper' in updates) {
+          const currentSettings = appSettings.getSettings();
+          if (this.pushToTalkService) {
+            // When local whisper is enabled, disable streaming
+            const shouldStream = currentSettings.useDeepgramStreaming && !currentSettings.useLocalWhisper;
+            this.pushToTalkService.setStreamingMode(shouldStream);
+            Logger.info(`[SettingsIPC] Local Whisper changed - Streaming mode: ${shouldStream}`);
           }
         }
         
@@ -201,6 +232,46 @@ export class SettingsIPCHandlers {
     ipcMain.handle('get-streaming-mode', async () => {
       const settings = appSettings.getSettings();
       return { enabled: settings.useDeepgramStreaming };
+    });
+
+    // Whisper model management handlers
+    ipcMain.handle('whisper:get-downloaded-models', async () => {
+      try {
+        const { LocalWhisperTranscriber } = await import('../transcription/local-whisper-transcriber');
+        const transcriber = new LocalWhisperTranscriber();
+        return transcriber.getDownloadedModels();
+      } catch (error) {
+        Logger.error('[SettingsIPC] Failed to get downloaded models:', error);
+        return [];
+      }
+    });
+
+    ipcMain.handle('whisper:is-model-downloaded', async (_, modelId: string) => {
+      try {
+        const { LocalWhisperTranscriber } = await import('../transcription/local-whisper-transcriber');
+        const transcriber = new LocalWhisperTranscriber();
+        return transcriber.isModelDownloaded(modelId);
+      } catch (error) {
+        Logger.error('[SettingsIPC] Failed to check model:', error);
+        return false;
+      }
+    });
+
+    ipcMain.handle('whisper:download-model', async (event, modelId: string) => {
+      try {
+        const { LocalWhisperTranscriber } = await import('../transcription/local-whisper-transcriber');
+        const transcriber = new LocalWhisperTranscriber();
+        
+        // Send progress updates to renderer
+        const result = await transcriber.downloadModel(modelId, (percent, downloadedMB, totalMB) => {
+          event.sender.send('whisper:download-progress', { modelId, percent, downloadedMB, totalMB });
+        });
+        
+        return { success: result };
+      } catch (error) {
+        Logger.error('[SettingsIPC] Failed to download model:', error);
+        return { success: false, error: String(error) };
+      }
     });
 
     this.handlersRegistered = true;
