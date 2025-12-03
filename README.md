@@ -243,6 +243,16 @@ If Jarvis saves you time, please give it a star! It helps others discover the pr
 
 ---
 
+## ⭐ Star History
+
+<p align="center">
+  <a href="https://star-history.com/#akshayaggarwal99/jarvis-ai-assistant&Date">
+    <img src="https://api.star-history.com/svg?repos=akshayaggarwal99/jarvis-ai-assistant&type=Date" alt="Star History Chart" width="600"/>
+  </a>
+</p>
+
+---
+
 ## 📄 License
 
 MIT License - see [LICENSE](LICENSE) for details.
