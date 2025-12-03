@@ -1,47 +1,17 @@
 <p align="center">
-  <img src="assets/jarvis-logo.svg" alt="Jarvis AI Assistant" width="140"/>
+  <img src="assets/jarvis-logo.svg" alt="Jarvis" width="140"/>
 </p>
-
 <h1 align="center">Jarvis AI Assistant</h1>
-
+<p align="center"><strong>Hold one key. Speak. Text appears — perfectly.</strong></p>
 <p align="center">
-  <strong>🎙️ The Open-Source Voice Dictation & AI Assistant for macOS</strong>
+  <em>100% open-source • 100% local-capable • 100% free forever</em>
 </p>
 
 <p align="center">
-  <em>Press a key. Speak. Watch your words appear anywhere.</em>
+  <a href="https://jarvis.ceo"><img src="https://img.shields.io/badge/website-jarvis.ceo-0066FF?style=for-the-badge" /></a>
+  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest"><img src="https://img.shields.io/github/v/release/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&logo=apple&label=Download&color=0066FF" /></a>
+  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/stargazers"><img src="https://img.shields.io/github/stars/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&color=FFD700" /></a>
 </p>
-
-<p align="center">
-  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
-    <img src="https://img.shields.io/github/v/release/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&logo=apple&logoColor=white&label=Download&color=0066FF" alt="Download"/>
-  </a>
-  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/stargazers">
-    <img src="https://img.shields.io/github/stars/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&color=FFD700&logo=star" alt="Stars"/>
-  </a>
-  <a href="LICENSE">
-    <img src="https://img.shields.io/badge/License-MIT-00C853?style=for-the-badge" alt="License"/>
-  </a>
-  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases">
-    <img src="https://img.shields.io/badge/Platform-macOS-000000?style=for-the-badge&logo=apple" alt="macOS"/>
-  </a>
-</p>
-
-<br/>
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=TnNf300Bbxg">
-    <img src="https://img.youtube.com/vi/TnNf300Bbxg/maxresdefault.jpg" alt="Watch Demo" width="700"/>
-  </a>
-</p>
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=TnNf300Bbxg">
-    <img src="https://img.shields.io/badge/▶_Watch_Full_Demo-FF0000?style=for-the-badge&logo=youtube&logoColor=white" alt="Watch Demo"/>
-  </a>
-</p>
-
-### 📧 Quick Demo: Dictating an Email
 
 <p align="center">
 
@@ -49,197 +19,122 @@ https://github.com/user-attachments/assets/763ea6aa-87d5-4e0a-9f05-a2bdaa82f40f
 
 </p>
 
-> *Hold Fn → Speak → Release → Text appears instantly!*
+<p align="center"><a href="https://www.youtube.com/watch?v=TnNf300Bbxg">▶ Watch full 2-min demo on YouTube</a></p>
 
 ---
 
-## 💡 Why Jarvis?
+## The (short) story
 
-**Fun fact:** [Wispr Flow](https://wisprflow.ai/) recently raised **$81 million** to build a voice dictation tool. I built Jarvis in my spare time and decided to **open-source it for everyone**. 🎉
+Wispr Flow raised **$81 million** to build a voice dictation app.  
+I got annoyed, spent 3 months of late nights building my own version, and open-sourced it.
 
-### 💸 Use Jarvis Completely FREE
+That's it.  
+No funding. No team. Just one stubborn developer who hates subscriptions.
 
-Unlike Wispr Flow ($10-$24/month with word limits), Jarvis can run **100% free**:
-
-| Service | Free Tier | What You Get |
-|---------|-----------|--------------|
-| 🎤 **Deepgram** | $200 free credits | ~3,000+ hours of transcription |
-| 🤖 **Google Gemini** | Unlimited free API | AI formatting forever |
-| 🔇 **Local Whisper** | 100% free forever | Offline transcription, no internet needed |
-
-> **No subscriptions. No word limits. No monthly fees.**
+This is what open source is supposed to be.
 
 ---
 
-## 📥 Download
+## Why people actually use it
 
-<table>
-  <tr>
-    <td align="center" width="50%">
-      <img src="https://img.shields.io/badge/Apple_Silicon-M1/M2/M3/M4-000000?style=flat-square&logo=apple" alt="Apple Silicon"/><br/><br/>
-      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
-        <img src="https://img.shields.io/badge/Download_DMG-arm64-0066FF?style=for-the-badge" alt="Download ARM64"/>
-      </a>
-    </td>
-    <td align="center" width="50%">
-      <img src="https://img.shields.io/badge/Intel_Mac-x64-000000?style=flat-square&logo=intel" alt="Intel"/><br/><br/>
-      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
-        <img src="https://img.shields.io/badge/Download_DMG-x64-0066FF?style=for-the-badge" alt="Download x64"/>
-      </a>
-    </td>
-  </tr>
-</table>
+- Hold **Fn** → speak → release → clean, punctuated text appears **anywhere**
+- Removes "um", "like", all fillers automatically
+- Fixes grammar, can rephrase, bullet-point, or even generate text
+- Tiny actions already work ("open YouTube", "set 5-min timer")
+- **Fully offline** with local Whisper (tiny/base/small)
+- Or blazing fast + free forever using Deepgram ($200 credits) + Gemini (1M tokens/day free)
 
-> 💡 **Both downloads link to the [latest release](https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest)** - pick the right DMG for your Mac!
-
-> ✅ **Signed & Notarized** by Apple - No security warnings!
+**Zero tracking. Zero telemetry. Zero bullshit.**
 
 ---
 
-## ✨ Features
+## Download
 
-<table>
-  <tr>
-    <td>🎙️ <strong>Voice Dictation</strong></td>
-    <td>Press Fn, speak, release - text appears instantly</td>
-  </tr>
-  <tr>
-    <td>⚡ <strong>Lightning Fast</strong></td>
-    <td>Real-time transcription with Deepgram Nova-3</td>
-  </tr>
-  <tr>
-    <td>🔇 <strong>Offline Mode</strong></td>
-    <td>Local Whisper model - no internet required</td>
-  </tr>
-  <tr>
-    <td>🤖 <strong>AI Formatting</strong></td>
-    <td>Auto-punctuation, grammar fixes, smart formatting</td>
-  </tr>
-  <tr>
-    <td>🔒 <strong>Privacy First</strong></td>
-    <td>Your API keys stay on your machine</td>
-  </tr>
-  <tr>
-    <td>🎨 <strong>Minimal UI</strong></td>
-    <td>Elegant waveform overlay while recording</td>
-  </tr>
-  <tr>
-    <td>📊 <strong>Usage Analytics</strong></td>
-    <td>Track your stats locally</td>
-  </tr>
-  <tr>
-    <td>🖥️ <strong>macOS Native</strong></td>
-    <td>Menu bar app, optimized for Mac</td>
-  </tr>
-</table>
+| Chip | Link |
+|------|------|
+| 🍎 Apple Silicon | [Download DMG (M1/M2/M3/M4)](https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest) |
+| 💻 Intel Mac | [Download DMG (x64)](https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest) |
+
+✅ Signed & notarized by Apple → no scary warnings.
 
 ---
 
-## 🎯 How It Works
+## Jarvis vs $700M startups
 
-```
-1. Hold Fn key     →  Recording starts (waveform appears)
-2. Speak clearly   →  Your voice is captured
-3. Release Fn      →  Text is transcribed & pasted instantly
-```
-
-### ⌨️ Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Fn` (hold) | Start/stop voice recording |
-| `Cmd+Shift+J` | Show/hide dashboard |
-| `Escape` | Cancel current recording |
+| | **Jarvis** | The $700M one |
+|---|:---:|:---:|
+| 💰 Price | **Free forever** | $10–24/month |
+| 🔇 Offline / Local | **Yes (Whisper)** | No |
+| 🔓 Open Source | **Yes (MIT)** | No |
+| 📡 Telemetry | **None** | ??? |
+| 👨‍💻 Built by | **1 guy at 2am** | VC money |
 
 ---
 
-## 🔑 Getting Started
+## Quick setup (30 seconds)
 
-### 1. Get Your Free API Keys
+1. Download & open the app
+2. (Optional) paste free Deepgram + Gemini keys → unlimited speed  
+   OR skip everything → switch to **Local Whisper** in Settings → 100% offline
+3. Hold Fn and talk
 
-| Provider | What For | How to Get |
-|----------|----------|------------|
-| **Deepgram** ⭐ | Fast transcription | [Get $200 Free Credits →](https://console.deepgram.com/) |
-| **Google Gemini** | AI formatting | [Get Free API Key →](https://makersuite.google.com/app/apikey) |
-| **OpenAI** *(optional)* | Whisper + GPT | [Get API Key →](https://platform.openai.com/api-keys) |
-
-> 💡 **Recommended:** Deepgram + Gemini = completely free for most users!
-
-### 2. Install & Configure
-
-1. Download the DMG for your Mac
-2. Drag Jarvis to Applications
-3. Launch and enter your API keys during onboarding
-4. Grant microphone & accessibility permissions
-5. Start dictating!
+That's literally it.
 
 ---
 
-## 🆚 Jarvis vs Wispr Flow
+## Keyboard shortcuts
 
-| Feature | **Jarvis** | Wispr Flow |
-|---------|:----------:|:----------:|
-| **Price** | **Free** | $10-$24/mo |
-| **Word Limits** | **Unlimited** | Limited |
-| **Offline Mode** | **✅ Yes** | ❌ No |
-| **Open Source** | **✅ Yes** | ❌ No |
-| **Privacy** | **Your data** | Cloud-based |
-| **Free Credits** | **$200+** | None |
+| Shortcut | What it does |
+|----------|--------------|
+| `Fn` (hold) | Start/stop recording |
+| `Fn` (double-tap) | Toggle hands-free mode |
+| `Escape` | Cancel recording |
 
 ---
 
-## 🛠️ Build from Source
+## Build from source
 
 ```bash
-# Clone the repository
 git clone https://github.com/akshayaggarwal99/jarvis-ai-assistant.git
 cd jarvis-ai-assistant
-
-# Install dependencies
-npm install
-
-# Build native modules and run
-npm run build
-npm run dev
+npm install && npm run build && npm run dev
 ```
 
-### Requirements
-
-- **Node.js** 18+ 
-- **macOS** 10.13+
-- **Xcode Command Line Tools** (for native modules)
+Requires Node.js 18+, macOS 10.13+, Xcode CLI tools.
 
 ---
 
-## 🔒 Privacy & Security
+## Roadmap (help me choose!)
 
-- ✅ **No cloud accounts** - Works with your own API keys
-- ✅ **Local storage only** - All data in `~/.jarvis/`
-- ✅ **Zero telemetry** - No tracking whatsoever
-- ✅ **Open source** - Audit the code yourself
-- ✅ **Signed & Notarized** - Verified by Apple
+- [x] Proper "local-only" onboarding (no fake keys needed)
+- [ ] Custom voice commands & prompts
+- [ ] Windows version
+- [ ] Clipboard magic & multi-step actions
+- [ ] iOS (yes, I dream big)
 
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to:
-
-- 🐛 [Report bugs](https://github.com/akshayaggarwal99/jarvis-ai-assistant/issues)
-- 💡 [Suggest features](https://github.com/akshayaggarwal99/jarvis-ai-assistant/issues)
-- 🔧 [Submit pull requests](https://github.com/akshayaggarwal99/jarvis-ai-assistant/pulls)
+Open issues, vote, or drop crazy ideas → [github.com/.../issues](https://github.com/akshayaggarwal99/jarvis-ai-assistant/issues)
 
 ---
 
-## ⭐ Star History
+## Wanna help?
 
-If Jarvis saves you time, please give it a star! It helps others discover the project.
+Every star pushes this higher so more people discover they don't need another subscription.
 
 <p align="center">
-  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant">
-    <img src="https://img.shields.io/badge/⭐_Star_on_GitHub-171515?style=for-the-badge&logo=github" alt="Star on GitHub"/>
+  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/stargazers">
+    <img src="https://img.shields.io/github/stars/akshayaggarwal99/jarvis-ai-assistant?style=social" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/fork">
+    <img src="https://img.shields.io/github/forks/akshayaggarwal99/jarvis-ai-assistant?style=social" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://twitter.com/intent/tweet?text=Found%20this%20free%20open-source%20voice%20dictation%20app%20for%20Mac.%20No%20subscriptions%2C%20works%20offline.&url=https://github.com/akshayaggarwal99/jarvis-ai-assistant">
+    <img src="https://img.shields.io/twitter/url?style=social&url=https://github.com/akshayaggarwal99/jarvis-ai-assistant" />
   </a>
 </p>
+
+Or just use it and tell one friend. That's enough.
 
 ---
 
@@ -247,22 +142,20 @@ If Jarvis saves you time, please give it a star! It helps others discover the pr
 
 <p align="center">
   <a href="https://star-history.com/#akshayaggarwal99/jarvis-ai-assistant&Date">
-    <img src="https://api.star-history.com/svg?repos=akshayaggarwal99/jarvis-ai-assistant&type=Date" alt="Star History Chart" width="600"/>
+    <img src="https://api.star-history.com/svg?repos=akshayaggarwal99/jarvis-ai-assistant&type=Date" width="600" />
   </a>
 </p>
 
 ---
 
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
----
-
 <p align="center">
-  <sub>Made with ❤️ by <a href="https://github.com/akshayaggarwal99">Akshay Aggarwal</a></sub>
+  Built with caffeine and spite by <strong><a href="https://github.com/akshayaggarwal99">Akshay</a></strong>
 </p>
 
 <p align="center">
-  <sub>🌟 If Jarvis helps you, consider starring the repo! 🌟</sub>
+  <em>Open source isn't about beating giants.<br/>It's about making sure no one ever has to pay them.</em>
+</p>
+
+<p align="center">
+  <sub>MIT License — do whatever you want with it.</sub>
 </p>
