@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
-    <img src="https://img.shields.io/badge/Download-v1.1.0-0066FF?style=for-the-badge&logo=apple&logoColor=white" alt="Download"/>
+    <img src="https://img.shields.io/github/v/release/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&logo=apple&logoColor=white&label=Download&color=0066FF" alt="Download"/>
   </a>
   <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/stargazers">
     <img src="https://img.shields.io/github/stars/akshayaggarwal99/jarvis-ai-assistant?style=for-the-badge&color=FFD700&logo=star" alt="Stars"/>
@@ -77,18 +77,20 @@ Unlike Wispr Flow ($10-$24/month with word limits), Jarvis can run **100% free**
   <tr>
     <td align="center" width="50%">
       <img src="https://img.shields.io/badge/Apple_Silicon-M1/M2/M3/M4-000000?style=flat-square&logo=apple" alt="Apple Silicon"/><br/><br/>
-      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/download/v1.1.0/Jarvis.-.AI.Assistant-1.1.0-arm64.dmg">
+      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
         <img src="https://img.shields.io/badge/Download_DMG-arm64-0066FF?style=for-the-badge" alt="Download ARM64"/>
       </a>
     </td>
     <td align="center" width="50%">
       <img src="https://img.shields.io/badge/Intel_Mac-x64-000000?style=flat-square&logo=intel" alt="Intel"/><br/><br/>
-      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/download/v1.1.0/Jarvis.-.AI.Assistant-1.1.0.dmg">
+      <a href="https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest">
         <img src="https://img.shields.io/badge/Download_DMG-x64-0066FF?style=for-the-badge" alt="Download x64"/>
       </a>
     </td>
   </tr>
 </table>
+
+> 💡 **Both downloads link to the [latest release](https://github.com/akshayaggarwal99/jarvis-ai-assistant/releases/latest)** - pick the right DMG for your Mac!
 
 > ✅ **Signed & Notarized** by Apple - No security warnings!
 
