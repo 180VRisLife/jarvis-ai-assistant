@@ -124,7 +124,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   
   // API Key methods (stored locally, never uploaded)
   getApiKeys: () => ipcRenderer.invoke('api-keys:get'),
-  saveApiKeys: (keys: { openaiApiKey?: string; deepgramApiKey?: string; anthropicApiKey?: string; geminiApiKey?: string }) => 
+  saveApiKeys: (keys: { 
+    openaiApiKey?: string; 
+    deepgramApiKey?: string; 
+    anthropicApiKey?: string; 
+    geminiApiKey?: string;
+    awsAccessKeyId?: string;
+    awsSecretAccessKey?: string;
+    awsRegion?: string;
+  }) => 
     ipcRenderer.invoke('api-keys:save', keys),
   
   // Whisper model management

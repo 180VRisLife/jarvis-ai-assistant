@@ -189,10 +189,13 @@ export class SettingsIPCHandlers {
           deepgramApiKey: settings.deepgramApiKey || '',
           anthropicApiKey: settings.anthropicApiKey || '',
           geminiApiKey: settings.geminiApiKey || '',
+          awsAccessKeyId: settings.awsAccessKeyId || '',
+          awsSecretAccessKey: settings.awsSecretAccessKey || '',
+          awsRegion: settings.awsRegion || '',
         };
       } catch (error) {
         Logger.error('[SettingsIPC] Failed to get API keys:', error);
-        return { openaiApiKey: '', deepgramApiKey: '', anthropicApiKey: '', geminiApiKey: '' };
+        return { openaiApiKey: '', deepgramApiKey: '', anthropicApiKey: '', geminiApiKey: '', awsAccessKeyId: '', awsSecretAccessKey: '', awsRegion: '' };
       }
     });
 
@@ -201,7 +204,10 @@ export class SettingsIPCHandlers {
       openaiApiKey?: string; 
       deepgramApiKey?: string; 
       anthropicApiKey?: string; 
-      geminiApiKey?: string 
+      geminiApiKey?: string;
+      awsAccessKeyId?: string;
+      awsSecretAccessKey?: string;
+      awsRegion?: string;
     }) => {
       try {
         Logger.info('[SettingsIPC] Saving API keys...');
@@ -211,6 +217,9 @@ export class SettingsIPCHandlers {
         if (keys.deepgramApiKey !== undefined) updates.deepgramApiKey = keys.deepgramApiKey;
         if (keys.anthropicApiKey !== undefined) updates.anthropicApiKey = keys.anthropicApiKey;
         if (keys.geminiApiKey !== undefined) updates.geminiApiKey = keys.geminiApiKey;
+        if (keys.awsAccessKeyId !== undefined) updates.awsAccessKeyId = keys.awsAccessKeyId;
+        if (keys.awsSecretAccessKey !== undefined) updates.awsSecretAccessKey = keys.awsSecretAccessKey;
+        if (keys.awsRegion !== undefined) updates.awsRegion = keys.awsRegion;
         
         appSettings.updateSettings(updates);
         

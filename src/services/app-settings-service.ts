@@ -20,6 +20,10 @@ interface AppSettings {
   deepgramApiKey?: string;
   anthropicApiKey?: string;
   geminiApiKey?: string;
+  // AWS Bedrock credentials
+  awsAccessKeyId?: string;
+  awsSecretAccessKey?: string;
+  awsRegion?: string;
 }
 
 /**
