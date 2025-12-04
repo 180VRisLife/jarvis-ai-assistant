@@ -501,10 +501,16 @@ const Dashboard: React.FC<DashboardProps> = ({ preloadedData }) => {
         <div className="px-6 pb-6 flex-shrink-0">
           <div className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl">
             <div className="flex items-center justify-between">
-              <div className="text-sm text-white/90">Pro (Open Source)</div>
+              <div className="text-sm text-white/90">Open Source ❤️</div>
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
             </div>
-            <div className="text-xs text-white/60 mt-1">All features unlocked</div>
+            <div className="text-xs text-white/60 mt-1">Everything unlocked forever</div>
+            <div 
+              className="text-[10px] text-white/40 mt-2 cursor-pointer hover:text-white/60 transition-colors"
+              onClick={() => (window as any).electronAPI?.openExternal?.('https://github.com/akshayaggarwal99/jarvis-ai-assistant')}
+            >
+              Love it? ⭐ on GitHub or tell a friend
+            </div>
           </div>
         </div>
         </div>

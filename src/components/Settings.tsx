@@ -1016,12 +1016,25 @@ const Settings: React.FC = () => {
           {/* Credits */}
           <div className="mb-4">
             <p className={`text-sm ${theme.text.secondary}`}>
-              Built with ❤️ by <span className="text-blue-400 font-medium">Akshay</span>
+              Built with ❤️ (and a lot of coffee) by <span className="text-blue-400 font-medium">Akshay</span>
             </p>
-            <p className={`text-xs ${theme.text.tertiary} mt-1`}>
-              100% open source • 100% free forever • 100% local privacy
+            <p className={`text-xs ${theme.text.tertiary} mt-2`}>
+              100% open-source • 100% free forever • 100% local privacy
+            </p>
+            <p className={`text-xs ${theme.text.tertiary} mt-3 italic`}>
+              Made this because I got tired of paying for voice apps.<br/>
+              Hope it saves you the same headache.
             </p>
           </div>
+
+          {/* Divider */}
+          <div className="border-t border-white/5 my-4"></div>
+
+          {/* Share Request */}
+          <p className={`text-xs ${theme.text.tertiary} mb-4`}>
+            If it's useful → star on GitHub or tell one friend.<br/>
+            That's literally all the "payment" I want 😂
+          </p>
 
           {/* Links */}
           <div className="flex flex-wrap gap-3">
