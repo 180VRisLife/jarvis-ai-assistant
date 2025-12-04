@@ -995,24 +995,15 @@ const Settings: React.FC = () => {
         <div className={`${theme.glass.secondary} rounded-lg p-5 border border-white/5`}>
           {/* Logo and App Info */}
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-600/20 p-2 border border-white/10 shadow-lg">
-              <img 
-                src="../assets/jarvis-logo.png" 
-                alt="Jarvis Logo" 
-                className="w-full h-full object-contain"
-                onError={(e) => {
-                  // Fallback to emoji if image fails to load
-                  const target = e.currentTarget;
-                  target.style.display = 'none';
-                  const fallback = target.parentElement?.querySelector('.fallback-icon');
-                  if (fallback) (fallback as HTMLElement).style.display = 'flex';
-                }}
-              />
-              <div className="fallback-icon hidden w-full h-full items-center justify-center text-2xl">🤖</div>
+            <div className="w-14 h-14 bg-gradient-to-br from-white/20 to-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20 shadow-lg">
+              <svg xmlns="http://www.w3.org/2000/svg" enableBackground="new 0 0 20 20" height="32px" viewBox="0 0 20 20" width="32px" fill="#ffffff">
+                <rect fill="none" height="20" width="20" y="0"/>
+                <path d="M15.98,5.82L10,2.5L4.02,5.82l3.8,2.11C8.37,7.36,9.14,7,10,7s1.63,0.36,2.17,0.93L15.98,5.82z M8.5,10 c0-0.83,0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5s-0.67,1.5-1.5,1.5S8.5,10.83,8.5,10z M9.25,17.08l-6-3.33V7.11L7.1,9.24 C7.03,9.49,7,9.74,7,10c0,1.4,0.96,2.57,2.25,2.91V17.08z M10.75,17.08v-4.18C12.04,12.57,13,11.4,13,10c0-0.26-0.03-0.51-0.1-0.76 l3.85-2.14l0,6.64L10.75,17.08z"/>
+              </svg>
             </div>
             <div className="flex-1">
               <h4 className={`text-lg font-semibold ${theme.text.primary}`}>Jarvis AI Assistant</h4>
-              <p className={`text-sm ${theme.text.tertiary}`}>Version 1.1.1</p>
+              <p className={`text-sm ${theme.text.tertiary}`}>Version 1.1.2</p>
               <p className={`text-xs ${theme.text.tertiary} mt-1`}>
                 Your intelligent voice companion for macOS
               </p>
@@ -1025,7 +1016,7 @@ const Settings: React.FC = () => {
           {/* Credits */}
           <div className="mb-4">
             <p className={`text-sm ${theme.text.secondary}`}>
-              Built with ❤️ by <span className="text-blue-400 font-medium">Akshay Aggarwal</span>
+              Built with ❤️ by <span className="text-blue-400 font-medium">Akshay</span>
             </p>
             <p className={`text-xs ${theme.text.tertiary} mt-1`}>
               100% open source • 100% free forever • 100% local privacy
