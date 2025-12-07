@@ -28,7 +28,7 @@ const AWS_REGIONS = [
 const Settings: React.FC = () => {
   // Active tab
   const [activeTab, setActiveTab] = useState<SettingsTab>('general');
-  
+
   // Settings state
   const [showNudges, setShowNudges] = useState(true);
   const [hotkey, setHotkey] = useState('fn');
@@ -39,13 +39,13 @@ const Settings: React.FC = () => {
   const [localWhisperModel, setLocalWhisperModel] = useState('tiny.en');
   const [userName, setUserName] = useState('');
   const [showWaveform, setShowWaveform] = useState(true);
-  
+
   // Transcription API Keys
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [deepgramApiKey, setDeepgramApiKey] = useState('');
   const [showOpenaiKey, setShowOpenaiKey] = useState(false);
   const [showDeepgramKey, setShowDeepgramKey] = useState(false);
-  
+
   // AI Model API Keys
   const [geminiApiKey, setGeminiApiKey] = useState('');
   const [anthropicApiKey, setAnthropicApiKey] = useState('');
@@ -56,18 +56,25 @@ const Settings: React.FC = () => {
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showAwsAccessKey, setShowAwsAccessKey] = useState(false);
   const [showAwsSecretKey, setShowAwsSecretKey] = useState(false);
-  
+
+  // Ollama Settings
+  const [useOllama, setUseOllama] = useState(false);
+  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
+  const [ollamaModel, setOllamaModel] = useState('llama3');
+  const [availableOllamaModels, setAvailableOllamaModels] = useState<string[]>([]);
+  const [ollamaStatus, setOllamaStatus] = useState<'connected' | 'error' | 'checking' | 'idle'>('idle');
+
   // Saving states
   const [transcriptionKeysSaving, setTranscriptionKeysSaving] = useState(false);
   const [transcriptionKeysSaved, setTranscriptionKeysSaved] = useState(false);
   const [aiKeysSaving, setAiKeysSaving] = useState(false);
   const [aiKeysSaved, setAiKeysSaved] = useState(false);
-  
+
   // UI state
   const [isCustomizingHotkey, setIsCustomizingHotkey] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  
+
   // Whisper model download state
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState(0);
@@ -83,8 +90,8 @@ const Settings: React.FC = () => {
 
   // Tab configuration
   const tabs: { id: SettingsTab; label: string; icon: React.ReactNode }[] = [
-    { 
-      id: 'general', 
+    {
+      id: 'general',
       label: 'General',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,8 +100,8 @@ const Settings: React.FC = () => {
         </svg>
       )
     },
-    { 
-      id: 'transcription', 
+    {
+      id: 'transcription',
       label: 'Transcription',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,8 +109,8 @@ const Settings: React.FC = () => {
         </svg>
       )
     },
-    { 
-      id: 'ai-models', 
+    {
+      id: 'ai-models',
       label: 'AI Models',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,8 +118,8 @@ const Settings: React.FC = () => {
         </svg>
       )
     },
-    { 
-      id: 'system', 
+    {
+      id: 'system',
       label: 'System',
       icon: (
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -133,11 +140,13 @@ const Settings: React.FC = () => {
     loadSettings();
   }, []);
 
+
+
   const loadSettings = async () => {
     try {
       setIsLoading(true);
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI) {
         // Load app settings
         const appSettings = await electronAPI.appGetSettings();
@@ -151,7 +160,7 @@ const Settings: React.FC = () => {
           setUserName(appSettings.userName ?? '');
           setShowWaveform(appSettings.showWaveform ?? true);
         }
-        
+
         // Load API keys
         if (electronAPI.getApiKeys) {
           const apiKeys = await electronAPI.getApiKeys();
@@ -163,15 +172,27 @@ const Settings: React.FC = () => {
             setAwsAccessKeyId(apiKeys.awsAccessKeyId || '');
             setAwsSecretAccessKey(apiKeys.awsSecretAccessKey || '');
             setAwsRegion(apiKeys.awsRegion || 'us-east-1');
+
+            // Allow appSettings to override API key service if needed, or just load from app settings
+            if (appSettings) {
+              setUseOllama(appSettings.useOllama || false);
+              setOllamaUrl(appSettings.ollamaUrl || 'http://localhost:11434');
+              setOllamaModel(appSettings.ollamaModel || 'llama3');
+
+              // If enabled, try to fetch models immediately to check status
+              if (appSettings.useOllama) {
+                fetchOllamaModels(appSettings.ollamaUrl || 'http://localhost:11434');
+              }
+            }
           }
         }
-        
+
         // Load nudge settings
         const nudgeSettings = await electronAPI.nudgeGetSettings();
         if (nudgeSettings) {
           setShowNudges(nudgeSettings.enabled);
         }
-        
+
         // Load downloaded whisper models
         if (electronAPI.whisperGetDownloadedModels) {
           const models = await electronAPI.whisperGetDownloadedModels();
@@ -190,7 +211,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !showNudges;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.nudgeUpdateSettings) {
         await electronAPI.nudgeUpdateSettings({ enabled: newValue });
         setShowNudges(newValue);
@@ -207,7 +228,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !showOnStartup;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ showOnStartup: newValue });
         setShowOnStartup(newValue);
@@ -223,17 +244,17 @@ const Settings: React.FC = () => {
     try {
       console.log(`🔧 [Settings] Hotkey change requested: ${hotkey} -> ${newHotkey}`);
       setIsSaving(true);
-      
+
       // Update UI immediately for responsiveness
       setHotkey(newHotkey);
-      
+
       // Send to main process to update settings and restart monitoring
       const electronAPI = (window as any).electronAPI;
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ hotkey: newHotkey });
         console.log(`✅ [Settings] Hotkey successfully changed to: ${newHotkey}`);
       }
-      
+
     } catch (error) {
       console.error('❌ [Settings] Failed to change hotkey:', error);
       // Revert UI state on error
@@ -248,7 +269,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !audioFeedback;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ audioFeedback: newValue });
         setAudioFeedback(newValue);
@@ -265,7 +286,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !aiPostProcessing;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ aiPostProcessing: newValue });
         setAiPostProcessing(newValue);
@@ -282,7 +303,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !useLocalWhisper;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ useLocalWhisper: newValue });
         setUseLocalWhisper(newValue);
@@ -297,39 +318,39 @@ const Settings: React.FC = () => {
   const handleLocalWhisperModelChange = async (modelId: string) => {
     try {
       const electronAPI = (window as any).electronAPI;
-      
+
       // Check if model is already downloaded
       const isDownloaded = downloadedModels.includes(modelId);
-      
+
       if (!isDownloaded && electronAPI?.whisperDownloadModel) {
         // Start downloading
         setDownloadingModel(modelId);
         setDownloadProgress(0);
-        
+
         // Set up progress listener
         electronAPI.onWhisperDownloadProgress?.((data: { modelId: string; percent: number }) => {
           if (data.modelId === modelId) {
             setDownloadProgress(data.percent);
           }
         });
-        
+
         // Download the model
         const result = await electronAPI.whisperDownloadModel(modelId);
-        
+
         // Clean up listener
         electronAPI.removeWhisperDownloadProgressListener?.();
-        
+
         if (!result?.success) {
           console.error('Failed to download model');
           setDownloadingModel(null);
           return;
         }
-        
+
         // Update downloaded models list
         setDownloadedModels(prev => [...prev, modelId]);
         setDownloadingModel(null);
       }
-      
+
       // Save the model selection
       setIsSaving(true);
       if (electronAPI?.appUpdateSettings) {
@@ -348,7 +369,7 @@ const Settings: React.FC = () => {
     try {
       const electronAPI = (window as any).electronAPI;
       setUserName(newName);
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ userName: newName });
       }
@@ -362,7 +383,7 @@ const Settings: React.FC = () => {
       setIsSaving(true);
       const newValue = !showWaveform;
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.appUpdateSettings) {
         await electronAPI.appUpdateSettings({ showWaveform: newValue });
         setShowWaveform(newValue);
@@ -379,7 +400,7 @@ const Settings: React.FC = () => {
       setTranscriptionKeysSaving(true);
       setTranscriptionKeysSaved(false);
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.saveApiKeys) {
         await electronAPI.saveApiKeys({
           openaiApiKey: openaiApiKey.trim(),
@@ -400,7 +421,7 @@ const Settings: React.FC = () => {
       setAiKeysSaving(true);
       setAiKeysSaved(false);
       const electronAPI = (window as any).electronAPI;
-      
+
       if (electronAPI && electronAPI.saveApiKeys) {
         await electronAPI.saveApiKeys({
           geminiApiKey: geminiApiKey.trim(),
@@ -419,6 +440,72 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handleOllamaToggle = async () => {
+    try {
+      setIsSaving(true);
+      const newValue = !useOllama;
+      const electronAPI = (window as any).electronAPI;
+
+      if (electronAPI && electronAPI.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ useOllama: newValue });
+        setUseOllama(newValue);
+      }
+    } catch (error) {
+      console.error('Failed to update Ollama settings:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleOllamaUrlChange = async (url: string) => {
+    setOllamaUrl(url); // Update UI immediately
+    // Debounce saving in real app, but here we just update state and save on blur or separate effect if needed
+    // For now, let's just save it
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ ollamaUrl: url });
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const handleOllamaModelChange = async (model: string) => {
+    setOllamaModel(model);
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ ollamaModel: model });
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const fetchOllamaModels = async (url: string) => {
+    setOllamaStatus('checking');
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.ollamaGetModels) {
+        const result = await electronAPI.ollamaGetModels(url);
+        if (result.success) {
+          setAvailableOllamaModels(result.models);
+          setOllamaStatus('connected');
+        } else {
+          setOllamaStatus('error');
+          // Keep previous models if any, or clear? Better to keep just in case of transient error, 
+          // but status error warns user.
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch Ollama models:', error);
+      setOllamaStatus('error');
+    }
+  };
+
+  const handleOllamaUrlBlur = () => {
+    if (useOllama) {
+      fetchOllamaModels(ollamaUrl);
+    }
+  };
+
   const openExternalLink = (url: string) => {
     const electronAPI = (window as any).electronAPI;
     if (electronAPI?.openExternal) {
@@ -433,15 +520,13 @@ const Settings: React.FC = () => {
     <button
       onClick={onToggle}
       disabled={disabled}
-      className={`relative w-12 h-6 rounded-full transition-all duration-200 ${
-        enabled 
-          ? `${theme.glass.secondary} border border-white/20` 
-          : `${theme.glass.secondary} border border-white/10`
-      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      className={`relative w-12 h-6 rounded-full transition-all duration-200 ${enabled
+        ? `${theme.glass.secondary} border border-white/20`
+        : `${theme.glass.secondary} border border-white/10`
+        } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
     >
-      <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${
-        enabled ? 'translate-x-6' : 'translate-x-0.5'
-      } ${theme.shadow.lg}`} />
+      <div className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-transform ${enabled ? 'translate-x-6' : 'translate-x-0.5'
+        } ${theme.shadow.lg}`} />
     </button>
   );
 
@@ -467,7 +552,7 @@ const Settings: React.FC = () => {
           </svg>
           User Profile
         </h3>
-        
+
         <div>
           <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
             Your Name
@@ -493,7 +578,7 @@ const Settings: React.FC = () => {
           </svg>
           Voice & Hotkeys
         </h3>
-        
+
         <div className="space-y-6">
           {/* Hotkey Selection */}
           <div className="flex items-center justify-between">
@@ -505,7 +590,7 @@ const Settings: React.FC = () => {
               <kbd className={`${theme.glass.secondary} ${theme.radius.md} px-3 py-2 text-sm font-mono ${theme.text.primary} ${theme.shadow}`}>
                 {getHotkeyLabel(hotkey)}
               </kbd>
-              <button 
+              <button
                 onClick={() => setIsCustomizingHotkey(true)}
                 className={`${theme.text.secondary} hover:${theme.text.primary} text-sm font-medium transition-colors`}
               >
@@ -513,7 +598,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
-          
+
           {/* Audio Feedback */}
           <div className="flex items-center justify-between">
             <div>
@@ -559,7 +644,7 @@ const Settings: React.FC = () => {
             Offline
           </span>
         </h3>
-        
+
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -568,13 +653,13 @@ const Settings: React.FC = () => {
             </div>
             <Toggle enabled={useLocalWhisper} onToggle={handleLocalWhisperToggle} />
           </div>
-          
+
           {useLocalWhisper && (
             <div className={`${theme.glass.secondary} rounded-lg p-4 border border-white/5 mt-3`}>
               <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
                 Whisper Model
               </label>
-              
+
               {downloadingModel && (
                 <div className="mb-3">
                   <div className="flex justify-between text-xs text-white/60 mb-1">
@@ -582,14 +667,14 @@ const Settings: React.FC = () => {
                     <span>{downloadProgress}%</span>
                   </div>
                   <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300"
                       style={{ width: `${downloadProgress}%` }}
                     />
                   </div>
                 </div>
               )}
-              
+
               <div className="relative">
                 <select
                   value={localWhisperModel}
@@ -631,7 +716,7 @@ const Settings: React.FC = () => {
         <p className={`text-sm ${theme.text.tertiary} mb-6`}>
           For faster, more accurate transcription. Keys are stored locally.
         </p>
-        
+
         <div className="space-y-4">
           {/* Deepgram API Key */}
           <div>
@@ -667,7 +752,7 @@ const Settings: React.FC = () => {
             </div>
             <p className={`text-xs ${theme.text.tertiary} mt-1`}>Fastest real-time transcription with Nova-3 ($200 free credits)</p>
           </div>
-          
+
           {/* OpenAI API Key */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -699,7 +784,7 @@ const Settings: React.FC = () => {
             </div>
             <p className={`text-xs ${theme.text.tertiary} mt-1`}>For OpenAI Whisper API transcription</p>
           </div>
-          
+
           {/* Save Button */}
           <div className="pt-2">
             <button
@@ -732,6 +817,99 @@ const Settings: React.FC = () => {
   // Render AI Models Tab
   const renderAiModelsTab = () => (
     <div className="space-y-6">
+      {/* Ollama (Local) */}
+      <div className={`${theme.glass.primary} ${theme.radius.xl} p-6 ${theme.shadow}`}>
+        <h3 className={`font-medium ${theme.text.primary} mb-2 flex items-center gap-2`}>
+          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          Ollama (Local LLM)
+          <span className="px-2 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-400 rounded-md border border-emerald-500/20">
+            Local & Private
+          </span>
+        </h3>
+        <p className={`text-sm ${theme.text.tertiary} mb-4`}>
+          Run any model locally via Ollama. Requires Ollama to be running.
+        </p>
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h4 className={`font-medium ${theme.text.primary} mb-1`}>Use Ollama</h4>
+              <p className={`text-sm ${theme.text.tertiary}`}>Prioritize local Ollama model over cloud APIs</p>
+            </div>
+            <Toggle enabled={useOllama} onToggle={handleOllamaToggle} />
+          </div>
+
+          {useOllama && (
+            <div className={`${theme.glass.secondary} rounded-lg p-4 border border-white/5 space-y-4`}>
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className={`block text-sm font-medium ${theme.text.primary}`}>
+                    Ollama URL
+                  </label>
+                  <div className="flex items-center gap-2">
+                    {ollamaStatus === 'checking' && <span className="text-xs text-yellow-400">Checking...</span>}
+                    {ollamaStatus === 'connected' && <span className="text-xs text-emerald-400 flex items-center gap-1">● Connected</span>}
+                    {ollamaStatus === 'error' && <span className="text-xs text-red-400 flex items-center gap-1">● Connection Failed</span>}
+                    <button
+                      onClick={() => fetchOllamaModels(ollamaUrl)}
+                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                    >
+                      Check Connection
+                    </button>
+                  </div>
+                </div>
+                <input
+                  type="text"
+                  value={ollamaUrl}
+                  onChange={(e) => handleOllamaUrlChange(e.target.value)}
+                  onBlur={handleOllamaUrlBlur}
+                  className={`w-full bg-black/40 rounded-xl px-4 py-3 text-white border focus:outline-none transition-colors text-sm ${ollamaStatus === 'error' ? 'border-red-500/50 focus:border-red-500' : 'border-white/20 focus:border-white/40'
+                    }`}
+                  placeholder="http://localhost:11434"
+                />
+              </div>
+              <div>
+                <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
+                  Model Name
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={ollamaModel}
+                    onChange={(e) => handleOllamaModelChange(e.target.value)}
+                    className="w-full bg-black/40 rounded-xl px-4 py-3 text-white border border-white/20 focus:border-white/40 focus:outline-none transition-colors text-sm"
+                    placeholder="llama3"
+                    list="ollama-models"
+                  />
+                  <datalist id="ollama-models">
+                    {availableOllamaModels.length > 0 ? (
+                      availableOllamaModels.map(model => (
+                        <option key={model} value={model} />
+                      ))
+                    ) : (
+                      <>
+                        <option value="llama3" />
+                        <option value="mistral" />
+                        <option value="sam860/LFM2:1.2b" />
+                        <option value="gemma" />
+                        <option value="qwen2" />
+                      </>
+                    )}
+                  </datalist>
+                </div>
+                <p className={`text-xs ${theme.text.tertiary} mt-2`}>
+                  {availableOllamaModels.length > 0
+                    ? `Found ${availableOllamaModels.length} local models. Select one or type manually.`
+                    : "Type the exact model name from the Ollama library. e.g. sam860/LFM2:1.2b"}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Google Gemini */}
       <div className={`${theme.glass.primary} ${theme.radius.xl} p-6 ${theme.shadow}`}>
         <h3 className={`font-medium ${theme.text.primary} mb-2 flex items-center gap-2`}>
@@ -746,7 +924,7 @@ const Settings: React.FC = () => {
         <p className={`text-sm ${theme.text.tertiary} mb-4`}>
           Powers AI post-processing, grammar correction, and smart formatting.
         </p>
-        
+
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className={`text-sm font-medium ${theme.text.primary}`}>
@@ -793,7 +971,7 @@ const Settings: React.FC = () => {
         <p className={`text-sm ${theme.text.tertiary} mb-4`}>
           Alternative AI model for processing.
         </p>
-        
+
         <div>
           <div className="flex items-center justify-between mb-2">
             <label className={`text-sm font-medium ${theme.text.primary}`}>
@@ -839,7 +1017,7 @@ const Settings: React.FC = () => {
         <p className={`text-sm ${theme.text.tertiary} mb-4`}>
           Access Claude, Titan, and other models through AWS infrastructure.
         </p>
-        
+
         <div className="space-y-4">
           {/* AWS Access Key ID */}
           <div>
@@ -871,7 +1049,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
-          
+
           {/* AWS Secret Access Key */}
           <div>
             <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
@@ -894,7 +1072,7 @@ const Settings: React.FC = () => {
               </button>
             </div>
           </div>
-          
+
           {/* AWS Region */}
           <div>
             <label className={`block text-sm font-medium ${theme.text.primary} mb-2`}>
@@ -961,7 +1139,7 @@ const Settings: React.FC = () => {
           </svg>
           Startup & Behavior
         </h3>
-        
+
         <div className="space-y-6">
           {/* Launch on Startup */}
           <div className="flex items-center justify-between">
@@ -991,14 +1169,14 @@ const Settings: React.FC = () => {
           </svg>
           About
         </h3>
-        
+
         <div className={`${theme.glass.secondary} rounded-lg p-5 border border-white/5`}>
           {/* Logo and App Info */}
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-gradient-to-br from-white/20 to-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20 shadow-lg">
               <svg xmlns="http://www.w3.org/2000/svg" enableBackground="new 0 0 20 20" height="32px" viewBox="0 0 20 20" width="32px" fill="#ffffff">
-                <rect fill="none" height="20" width="20" y="0"/>
-                <path d="M15.98,5.82L10,2.5L4.02,5.82l3.8,2.11C8.37,7.36,9.14,7,10,7s1.63,0.36,2.17,0.93L15.98,5.82z M8.5,10 c0-0.83,0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5s-0.67,1.5-1.5,1.5S8.5,10.83,8.5,10z M9.25,17.08l-6-3.33V7.11L7.1,9.24 C7.03,9.49,7,9.74,7,10c0,1.4,0.96,2.57,2.25,2.91V17.08z M10.75,17.08v-4.18C12.04,12.57,13,11.4,13,10c0-0.26-0.03-0.51-0.1-0.76 l3.85-2.14l0,6.64L10.75,17.08z"/>
+                <rect fill="none" height="20" width="20" y="0" />
+                <path d="M15.98,5.82L10,2.5L4.02,5.82l3.8,2.11C8.37,7.36,9.14,7,10,7s1.63,0.36,2.17,0.93L15.98,5.82z M8.5,10 c0-0.83,0.67-1.5,1.5-1.5s1.5,0.67,1.5,1.5s-0.67,1.5-1.5,1.5S8.5,10.83,8.5,10z M9.25,17.08l-6-3.33V7.11L7.1,9.24 C7.03,9.49,7,9.74,7,10c0,1.4,0.96,2.57,2.25,2.91V17.08z M10.75,17.08v-4.18C12.04,12.57,13,11.4,13,10c0-0.26-0.03-0.51-0.1-0.76 l3.85-2.14l0,6.64L10.75,17.08z" />
               </svg>
             </div>
             <div className="flex-1">
@@ -1022,7 +1200,7 @@ const Settings: React.FC = () => {
               100% open-source • 100% free forever • 100% local privacy
             </p>
             <p className={`text-xs ${theme.text.tertiary} mt-3 italic`}>
-              Made this because I got tired of paying for voice apps.<br/>
+              Made this because I got tired of paying for voice apps.<br />
               Hope it saves you the same headache.
             </p>
           </div>
@@ -1032,7 +1210,7 @@ const Settings: React.FC = () => {
 
           {/* Share Request */}
           <p className={`text-xs ${theme.text.tertiary} mb-4`}>
-            If it's useful → star on GitHub or tell one friend.<br/>
+            If it's useful → star on GitHub or tell one friend.<br />
             That's literally all the "payment" I want 😂
           </p>
 
@@ -1043,7 +1221,7 @@ const Settings: React.FC = () => {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-all"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
               </svg>
               GitHub
             </button>
@@ -1052,7 +1230,7 @@ const Settings: React.FC = () => {
               className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs text-white/80 hover:bg-white/10 hover:text-white transition-all"
             >
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
               </svg>
               Twitter
             </button>
@@ -1085,11 +1263,10 @@ const Settings: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 ${theme.radius.lg} text-sm font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? `${theme.glass.active} ${theme.text.primary} border border-white/20 ${theme.shadow}`
-                : `${theme.text.tertiary} hover:${theme.text.secondary} hover:bg-white/5`
-            }`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 ${theme.radius.lg} text-sm font-medium transition-all duration-200 ${activeTab === tab.id
+              ? `${theme.glass.active} ${theme.text.primary} border border-white/20 ${theme.shadow}`
+              : `${theme.text.tertiary} hover:${theme.text.secondary} hover:bg-white/5`
+              }`}
           >
             {tab.icon}
             <span className="hidden sm:inline">{tab.label}</span>
@@ -1113,14 +1290,13 @@ const Settings: React.FC = () => {
             <p className={`text-sm ${theme.text.tertiary} mb-6`}>
               Select a key to use for push-to-talk dictation. Hold the key down to start recording, release to stop.
             </p>
-            
+
             <div className="space-y-3">
               {presetHotkeys.map((preset) => (
-                <label key={preset.key} className={`flex items-center space-x-3 p-3 ${theme.radius.xl} ${theme.glass.secondary} transition-all duration-200 cursor-pointer border ${
-                  hotkey === preset.key 
-                    ? `${theme.glass.active} border-white/30 ${theme.shadow.lg}` 
-                    : `border-white/10 hover:${theme.glass.hover}`
-                }`}>
+                <label key={preset.key} className={`flex items-center space-x-3 p-3 ${theme.radius.xl} ${theme.glass.secondary} transition-all duration-200 cursor-pointer border ${hotkey === preset.key
+                  ? `${theme.glass.active} border-white/30 ${theme.shadow.lg}`
+                  : `border-white/10 hover:${theme.glass.hover}`
+                  }`}>
                   <div className="relative">
                     <input
                       type="radio"
@@ -1130,11 +1306,10 @@ const Settings: React.FC = () => {
                       onChange={(e) => setHotkey(e.target.value)}
                       className="sr-only"
                     />
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
-                      hotkey === preset.key 
-                        ? 'border-white bg-white' 
-                        : 'border-white/40'
-                    }`}>
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${hotkey === preset.key
+                      ? 'border-white bg-white'
+                      : 'border-white/40'
+                      }`}>
                       {hotkey === preset.key && (
                         <div className="w-2 h-2 rounded-full bg-gray-900"></div>
                       )}

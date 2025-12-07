@@ -42,7 +42,8 @@ This is what open source is supposed to be.
 - Fixes grammar, can rephrase, bullet-point, or even generate text
 - Tiny actions already work ("open YouTube", "set 5-min timer")
 - **Fully offline** with local Whisper (tiny/base/small)
-- Or blazing fast + free forever using Deepgram ($200 credits) + Gemini (1M tokens/day free)
+- **100% Private, Blazingly Fast** support for local LLMs via [Ollama](https://ollama.com)
+- Or use cloud speed with Deepgram + Gemini (1M tokens/day free)
 
 **Zero tracking. Zero telemetry. Zero bullshit.**
 
@@ -75,11 +76,33 @@ This is what open source is supposed to be.
 ## Quick setup (30 seconds)
 
 1. Download & open the app
-2. (Optional) paste free Deepgram + Gemini keys → unlimited speed  
-   OR skip everything → switch to **Local Whisper** in Settings → 100% offline
-3. Hold Fn and talk
+2. **Go Local (Recommended for privacy):**  
+   - Settings → Transcription → Enable **Local Whisper**
+   - Settings → AI Models → Enable **Ollama** (requires [Ollama](https://ollama.com) installed)
+3. **Or Go Cloud (Recommended for speed/accuracy):**
+   - Paste free Deepgram + Gemini keys
+4. Hold Fn and talk
 
 That's literally it.
+
+---
+
+## 🦙 Ollama (Local LLM) Support
+
+Jarvis now supports running any LLM locally via Ollama. It's fast, private, and free.
+
+1.  **Install Ollama:** [Download here](https://ollama.com)
+2.  **Pull a model:**
+    ```bash
+    # LFM2 (optimized for speed)
+    ollama pull sam860/LFM2:1.2b
+
+    # Llama 3 (standard)
+    ollama pull llama3
+    ```
+3.  **Enable in Jarvis:**
+    - Settings → AI Models → Enable **Use Ollama**
+    - Select your model from the dropdown (Jarvis auto-detects them!)
 
 ---
 
@@ -109,6 +132,7 @@ Requires Node.js 18+, macOS 10.13+, Xcode CLI tools.
 
 - [x] Proper "local-only" onboarding (no fake keys needed)
 - [x] AWS Bedrock support
+- [x] Ollama support
 - [ ] Custom voice commands & prompts
 - [ ] Windows version
 - [ ] Clipboard magic & multi-step actions

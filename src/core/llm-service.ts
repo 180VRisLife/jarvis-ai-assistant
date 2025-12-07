@@ -13,16 +13,29 @@ export class CloudLLMService {
   private openaiKey: string;
   private geminiKey: string;
   private anthropicKey: string;
+  private useOllama: boolean;
+  private ollamaUrl: string;
+  private ollamaModel: string;
 
-  constructor(openaiKey: string, geminiKey: string, anthropicKey?: string) {
+  constructor(
+    openaiKey: string,
+    geminiKey: string,
+    anthropicKey?: string,
+    useOllama: boolean = false,
+    ollamaUrl: string = 'http://localhost:11434',
+    ollamaModel: string = 'llama3'
+  ) {
     this.openaiKey = openaiKey;
     this.geminiKey = geminiKey;
     this.anthropicKey = anthropicKey || '';
+    this.useOllama = useOllama;
+    this.ollamaUrl = ollamaUrl;
+    this.ollamaModel = ollamaModel;
   }
 
   async streamResponse(
-    transcript: string, 
-    context: string[], 
+    transcript: string,
+    context: string[],
     callbacks: StreamingLLMResponse,
     manualTrigger: boolean = false
   ): Promise<void> {
@@ -35,8 +48,17 @@ export class CloudLLMService {
     const prompt = this.buildPrompt(transcript, context);
     console.log('🎯 Manual help requested for:', transcript.substring(0, 50) + '...');
     console.log('📋 Context provided:', context.length, 'items');
-    
+
     try {
+      if (this.useOllama) {
+        try {
+          await this.streamOllama(prompt, callbacks);
+          return;
+        } catch (ollamaError) {
+          console.error('Ollama failed, falling back to Gemini:', ollamaError);
+        }
+      }
+
       await this.streamGemini(prompt, callbacks);
     } catch (error) {
       console.error('Gemini failed, falling back to Claude:', error);
@@ -55,7 +77,7 @@ export class CloudLLMService {
 
   private buildPrompt(transcript: string, context: string[]): string {
     const lastLine = this.getLastMeaningfulLine(transcript);
-    
+
     if (this.isNonSpeechContent(lastLine)) {
       return `Transcript contains non-speech audio (${lastLine}). Respond with: "Waiting for speech..."`;
     }
@@ -82,7 +104,7 @@ SUGGESTION:`;
   private isNonSpeechContent(text: string): boolean {
     const nonSpeechPatterns = [
       /^\(.*music.*\)$/i,
-      /^\(.*static.*\)$/i, 
+      /^\(.*static.*\)$/i,
       /^\(.*crackling.*\)$/i,
       /^\(.*cough.*\)$/i,
       /^\(.*speaking in.*language.*\)$/i,
@@ -93,13 +115,13 @@ SUGGESTION:`;
       /^wards the camera$/i,
       /^\s*$/, // empty or whitespace only
     ];
-    
+
     return nonSpeechPatterns.some(pattern => pattern.test(text.trim()));
   }
 
   private async streamGemini(prompt: string, callbacks: StreamingLLMResponse): Promise<void> {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${this.geminiKey}`;
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -122,7 +144,7 @@ SUGGESTION:`;
 
     const data = await response.json() as any;
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
+
     // Send the complete response immediately (Gemini doesn't have real streaming)
     callbacks.onToken(text);
     callbacks.onComplete(text);
@@ -161,12 +183,12 @@ SUGGESTION:`;
 
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n').filter(line => line.trim());
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') continue;
-            
+
             try {
               const parsed = JSON.parse(data);
               const token = parsed.delta?.text;
@@ -217,12 +239,12 @@ SUGGESTION:`;
 
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n').filter(line => line.trim());
-        
+
         for (const line of lines) {
           if (line.startsWith('data: ')) {
             const data = line.slice(6);
             if (data === '[DONE]') continue;
-            
+
             try {
               const parsed = JSON.parse(data);
               const token = parsed?.choices?.[0]?.delta?.content;
@@ -244,7 +266,7 @@ SUGGESTION:`;
 
   private getLastMeaningfulLine(transcript: string): string {
     const lines = transcript.split('\n').map(line => line.trim()).filter(line => line);
-    
+
     // Look for the last line that isn't non-speech
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i];
@@ -252,8 +274,67 @@ SUGGESTION:`;
         return line;
       }
     }
-    
-    // If no meaningful speech found, return the last line
+
     return lines[lines.length - 1] || transcript;
+  }
+
+  private async streamOllama(prompt: string, callbacks: StreamingLLMResponse): Promise<void> {
+    const url = `${this.ollamaUrl}/api/chat`; // Correct endpoint for chat
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: this.ollamaModel,
+        messages: [{ role: 'user', content: prompt }],
+        stream: true
+      })
+    });
+
+    if (!response.ok) {
+      // Try fallback to generate endpoint if chat fails, or just throw
+      throw new Error(`Ollama API error: ${response.status}`);
+    }
+
+    if (!response.body) {
+      throw new Error('No response body from Ollama');
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let fullText = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const parsed = JSON.parse(line);
+            const token = parsed.message?.content; // For chat endpoint
+
+            if (token) {
+              fullText += token;
+              callbacks.onToken(token);
+            }
+
+            if (parsed.done) {
+              break;
+            }
+          } catch (e) {
+            // Skip malformed JSON
+          }
+        }
+      }
+      callbacks.onComplete(fullText);
+    } finally {
+      reader.releaseLock();
+    }
   }
 }

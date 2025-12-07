@@ -19,9 +19,23 @@ export class JarvisCore {
   private transcriptBuffer: string[] = [];
   private isProcessing = false;
 
-  constructor(openaiKey: string, geminiKey: string, anthropicKey?: string) {
+  constructor(
+    openaiKey: string,
+    geminiKey: string,
+    anthropicKey?: string,
+    useOllama: boolean = false,
+    ollamaUrl: string = 'http://localhost:11434',
+    ollamaModel: string = 'llama3'
+  ) {
     this.mcpClient = new MCPClient();
-    this.llmService = new CloudLLMService(openaiKey, geminiKey, anthropicKey);
+    this.llmService = new CloudLLMService(
+      openaiKey,
+      geminiKey,
+      anthropicKey,
+      useOllama,
+      ollamaUrl,
+      ollamaModel
+    );
   }
 
   async initialize(): Promise<void> {
@@ -34,7 +48,7 @@ export class JarvisCore {
     forceSuggestion: boolean = false
   ): Promise<void> {
     if (this.isProcessing) return;
-    
+
     this.isProcessing = true;
     const startTime = Date.now();
 
@@ -71,7 +85,7 @@ export class JarvisCore {
         },
         onComplete: (fullText: string) => {
           const totalLatency = Date.now() - startTime;
-          
+
           onSuggestion({
             suggestion: fullText,
             context,
@@ -113,15 +127,15 @@ export class JarvisCore {
         const sessionId = `chat-${Date.now()}`;
 
         // Format the message with screen context
-        const chatMessage = context ? 
-          `Screen context: ${context}\n\nUser question: ${message}` : 
+        const chatMessage = context ?
+          `Screen context: ${context}\n\nUser question: ${message}` :
           message;
 
         Logger.info('🤖 Using LangGraph agent for chat with tool capabilities');
 
         // Get response from the agent (non-streaming)
         const response = await agent.processQuery(chatMessage, sessionId);
-        
+
         // Simulate streaming by sending the response token by token
         if (response) {
           const tokens = response.split(' ');

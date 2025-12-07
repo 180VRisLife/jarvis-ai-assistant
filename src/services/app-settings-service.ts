@@ -24,6 +24,10 @@ interface AppSettings {
   awsAccessKeyId?: string;
   awsSecretAccessKey?: string;
   awsRegion?: string;
+  // Ollama Settings
+  useOllama?: boolean;
+  ollamaUrl?: string;
+  ollamaModel?: string;
 }
 
 /**
@@ -57,7 +61,10 @@ export class AppSettingsService {
       useLocalWhisper: false, // Off by default, user can enable for offline mode
       localWhisperModel: 'tiny.en', // Default to fastest English model
       privacyConsentGiven: false, // User must explicitly consent
-      showWaveform: true // Show waveform by default
+      showWaveform: true, // Show waveform by default
+      useOllama: false,
+      ollamaUrl: 'http://localhost:11434',
+      ollamaModel: 'llama3'
     };
   }
 
@@ -67,12 +74,12 @@ export class AppSettingsService {
         const data = fs.readFileSync(this.settingsPath, 'utf8');
         const parsed = JSON.parse(data);
         const settings = { ...this.getDefaultSettings(), ...parsed };
-        
+
         // Migrate command key to fn key (command key is no longer supported)
         if (settings.hotkey === 'command') {
           settings.hotkey = 'fn';
         }
-        
+
         return settings;
       }
     } catch (error) {
@@ -88,7 +95,7 @@ export class AppSettingsService {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
       }
-      
+
       fs.writeFileSync(this.settingsPath, JSON.stringify(this.settings, null, 2));
     } catch (error) {
       console.error('[AppSettings] Failed to save settings:', error);
@@ -110,7 +117,7 @@ export class AppSettingsService {
   public updateSettings(updates: Partial<AppSettings>): void {
     this.settings = { ...this.settings, ...updates };
     this.saveSettings();
-    
+
     // Handle auto-launch setting change
     if (updates.showOnStartup !== undefined) {
       this.updateAutoLaunch(updates.showOnStartup);

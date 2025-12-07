@@ -32,13 +32,13 @@ import { StartupOptimizer } from './services/startup-optimizer';
 try {
   // Try loading from current directory first
   require('dotenv').config();
-  
+
   // Set auto-paste to true by default (can be overridden in .env)
   if (!process.env.AUTO_PASTE) {
     process.env.AUTO_PASTE = 'true';
     Logger.info('Auto-paste enabled by default (set AUTO_PASTE=false to disable)');
   }
-  
+
 } catch (error) {
   Logger.warning('Error loading .env for configuration:', error);
 }
@@ -162,31 +162,41 @@ async function initializeJarvis() {
   try {
     // Initialize secure API service
     const secureAPI = SecureAPIService.getInstance();
-    
+
     // OPEN SOURCE: API keys loaded from .env file or local server
-    
+
     // Get API keys from local environment
     const openaiKey = await secureAPI.getOpenAIKey();
     let geminiKey = '';
     let anthropicKey = '';
-    
+
     try {
       geminiKey = await secureAPI.getGeminiKey();
     } catch (error) {
       Logger.warning('GEMINI_API_KEY not available - some features may be limited');
     }
-    
+
     try {
       anthropicKey = await secureAPI.getAnthropicKey();
     } catch (error) {
       Logger.warning('ANTHROPIC_API_KEY not available - some features may be limited');
     }
 
-    // Initialize Jarvis Core with secure keys
-    jarvisCore = new JarvisCore(openaiKey, geminiKey, anthropicKey);
+    // Initialize Jarvis Core with secure keys AND local Ollama settings
+    const appSettings = AppSettingsService.getInstance();
+    const settings = appSettings.getSettings();
+
+    jarvisCore = new JarvisCore(
+      openaiKey,
+      geminiKey,
+      anthropicKey,
+      settings.useOllama,
+      settings.ollamaUrl,
+      settings.ollamaModel
+    );
     await jarvisCore.initialize();
     Logger.success('Jarvis Core initialized successfully');
-    
+
     // Initialize persistent agent for better performance and live agent experience
     try {
       await agentManager.initialize(openaiKey, geminiKey);
@@ -194,12 +204,12 @@ async function initializeJarvis() {
     } catch (error) {
       Logger.warning('▲ Failed to initialize Jarvis Agent - will fallback to on-demand creation:', error);
     }
-    
+
     // Initialize user nudge service after core initialization
     if (!userNudgeService) {
       userNudgeService = UserNudgeService.getInstance();
       Logger.info('◉ [Nudge] User nudge service initialized');
-      
+
       // Set nudge service on already-registered IPC handlers
       NudgeIPCHandlers.getInstance().setNudgeService(userNudgeService);
     }
@@ -220,10 +230,10 @@ function createWaveformWindow() {
 
 function createDashboardWindow() {
   const dashboardWindow = windowManager.createDashboardWindow();
-  
+
   // Remove any existing listeners to avoid duplicates
   analyticsManager.removeAllListeners('stats-update');
-  
+
   // Set up real-time stats updates listener
   const unsubscribe = analyticsManager.onStatsUpdate((stats) => {
     Logger.info(`📊 [Analytics] Real-time stats update received in main.ts, sessions: ${stats?.totalSessions}`);
@@ -238,35 +248,35 @@ function createDashboardWindow() {
       Logger.warning('📊 [Analytics] Dashboard window not available for stats update');
     }
   });
-  
+
   Logger.info(`📊 [Analytics] Stats update listener registered, total listeners: ${analyticsManager.listenerCount('stats-update')}`);
-  
+
   // Optimize window loading with proper state management
   dashboardWindow.once('ready-to-show', async () => {
     try {
       updateService.setMainWindow(dashboardWindow!);
-      
+
       const savedAuthState = loadAuthState();
       if (savedAuthState) {
         Logger.info('⟲ [Startup] Restoring auth state before showing dashboard:', savedAuthState.uid);
-        
+
         // Set user ID in analytics immediately
         await analyticsManager.setUserId(savedAuthState.uid);
         Logger.info('● [Startup] Restored user ID in analytics manager:', savedAuthState.uid);
-        
+
         // Send the auth state to the renderer for UI update FIRST
         if (dashboardWindow && !dashboardWindow.isDestroyed()) {
           dashboardWindow.webContents.send('auth:restore', savedAuthState);
           Logger.info('📤 [Startup] Sent auth state to renderer for restoration');
         }
-        
+
         // Show window immediately after auth state is sent
         dashboardWindow?.show();
         dashboardWindow?.focus();
-        
+
         // Mark app as initialized
         startupOptimizer.markInitialized();
-        
+
         // Defer heavy operations to prevent blocking the UI
         startupOptimizer.deferTask(async () => {
           try {
@@ -274,7 +284,7 @@ function createDashboardWindow() {
             Logger.info('▶ [Startup] Pre-loading analytics data...');
             await analyticsManager.getStats();
             Logger.info('● [Startup] Analytics data pre-loaded');
-            
+
             // Check if onboarding is completed and activate overlays if needed
             const onboardingCompleted = hasCompletedOnboarding();
             if (onboardingCompleted) {
@@ -287,13 +297,13 @@ function createDashboardWindow() {
             Logger.error('✖ [Startup] Failed to complete background initialization:', error);
           }
         });
-        
+
       } else {
         Logger.info('◆ [Startup] No saved auth state found - user will need to sign in');
         // Show window immediately for login flow
         dashboardWindow?.show();
         dashboardWindow?.focus();
-        
+
         // Mark app as initialized
         startupOptimizer.markInitialized();
       }
@@ -302,11 +312,11 @@ function createDashboardWindow() {
       // Show window even if auth restoration fails
       dashboardWindow?.show();
       dashboardWindow?.focus();
-      
+
       // Mark app as initialized
       startupOptimizer.markInitialized();
     }
-    
+
     // Enable global typing detection for nudge system with delay
     setTimeout(async () => {
       if (dashboardWindow && !dashboardWindow.isDestroyed()) {
@@ -392,7 +402,7 @@ async function stopPushToTalk() {
     } else {
       Logger.debug('⚠️ [StopPushToTalk] No service available to stop');
     }
-    
+
     // Stop sound is now played immediately in handleHotkeyUp for minimal latency
   } catch (error) {
     Logger.error('❌ [StopPushToTalk] Error stopping service:', error);
@@ -437,10 +447,10 @@ ipcMain.on('close-app', () => {
 async function activateOverlaysAndShortcuts() {
   try {
     Logger.info('▶ [Overlays] Starting activation of overlays and shortcuts...');
-    
+
     // Check privacy consent first - this is required for third-party data processing
     const appSettings = AppSettingsService.getInstance();
-    
+
     // Privacy consent disabled for now - will be part of onboarding flow
     // TODO: Integrate privacy consent into proper onboarding flow
     /*
@@ -458,13 +468,13 @@ async function activateOverlaysAndShortcuts() {
       Logger.info('✅ [Privacy] Privacy consent obtained - proceeding with activation');
     }
     */
-    
+
     // Initialize user nudge service if not already done
     if (!userNudgeService) {
       userNudgeService = UserNudgeService.getInstance();
       Logger.info('◉ [Nudge] User nudge service initialized in overlay activation');
     }
-    
+
     // Create overlay windows
     const waveformWin = getWaveformWindow();
     if (!waveformWin) {
@@ -473,7 +483,7 @@ async function activateOverlaysAndShortcuts() {
     } else {
       Logger.info('♫ [Overlays] Waveform window already exists');
     }
-    
+
     const suggestionWin = getSuggestionWindow();
     if (!suggestionWin) {
       Logger.info('◆ [Overlays] Creating suggestion window...');
@@ -481,7 +491,7 @@ async function activateOverlaysAndShortcuts() {
     } else {
       Logger.info('◆ [Overlays] Suggestion window already exists');
     }
-    
+
     // Show the waveform window only if showWaveform setting is enabled
     const currentSettings = appSettings.getSettings();
     const waveformWindow = getWaveformWindow();
@@ -491,7 +501,7 @@ async function activateOverlaysAndShortcuts() {
     } else if (waveformWindow) {
       Logger.info('◉ [Overlays] Waveform window hidden per user settings');
     }
-    
+
     // Register shortcuts and start monitoring
     Logger.info('⌨ [Overlays] Registering global shortcuts...');
     try {
@@ -499,20 +509,20 @@ async function activateOverlaysAndShortcuts() {
     } catch (error) {
       Logger.error('✖ [Overlays] Failed to register global shortcuts:', error);
     }
-    
+
     // Initialize user nudge service (always do this, even if shortcuts fail)
     if (!userNudgeService) {
       Logger.info('◉ [Nudge] Initializing user nudge service...');
       userNudgeService = UserNudgeService.getInstance();
       Logger.info('◉ [Nudge] Native typing detection will be handled by the nudge service');
     }
-    
+
     // Start Fn key monitoring for push-to-talk
     Logger.info('Transcription: GPT-4o-mini-transcribe → Local Whisper (fallback)');
     startHotkeyMonitoring();
-    
+
     Logger.success('● [Overlays] Overlays and shortcuts activated successfully');
-    
+
     // Open-source build: All features unlocked - no trial overlay needed
   } catch (error) {
     Logger.error('✖ [Overlays] Failed to activate overlays and shortcuts:', error);
@@ -522,15 +532,15 @@ async function activateOverlaysAndShortcuts() {
 async function deactivateOverlaysAndShortcuts() {
   try {
     Logger.info('◼ [Overlays] Starting deactivation of overlays and shortcuts...');
-    
+
     // Stop Fn key monitoring and push-to-talk functionality
     Logger.info('⌨ [Overlays] Stopping Fn key monitoring and push-to-talk...');
     stopHotkeyMonitoring();
-    
+
     // Unregister all global shortcuts
     Logger.info('◉ [Overlays] Unregistering global shortcuts...');
     shortcutService.unregisterAllShortcuts();
-    
+
     // Stop any active push-to-talk recording
     if (pushToTalkService) {
       Logger.info('♪ [Overlays] Stopping push-to-talk service...');
@@ -540,25 +550,25 @@ async function deactivateOverlaysAndShortcuts() {
         Logger.error('Error stopping push-to-talk:', error);
       }
     }
-    
+
     // Hide overlay windows if they exist
     if (waveformWindow && !waveformWindow.isDestroyed()) {
       Logger.info('♫ [Overlays] Hiding waveform window...');
       waveformWindow.hide();
     }
-    
+
     if (suggestionWindow && !suggestionWindow.isDestroyed()) {
       Logger.info('◆ [Overlays] Hiding suggestion window...');
       suggestionWindow.hide();
     }
-    
+
     // Cleanup nudge service
     if (userNudgeService) {
       Logger.info('◉ [Nudge] Deactivating user nudge service...');
       userNudgeService.destroy();
       userNudgeService = null;
     }
-    
+
     Logger.success('● [Overlays] Overlays and shortcuts deactivated successfully');
   } catch (error) {
     Logger.error('✖ [Overlays] Failed to deactivate overlays and shortcuts:', error);
@@ -580,17 +590,17 @@ ipcMain.on('new-session', () => {
   }
   transcripts = []; // Clear existing transcripts
   conversationContext = []; // Clear conversation context
-  
+
   // Clear correction detector state
   if ((global as any).correctionDetector) {
     (global as any).correctionDetector.stopMonitoring();
   }
-  
+
   // Clear any cached context in JarvisCore
   if (jarvisCore) {
     jarvisCore.clearTranscript();
   }
-  
+
   // Generate a new session ID
   currentSessionId = new Date().toISOString().replace(/[:.]/g, '-');
   Logger.info('Session cleared - fresh start initiated with session:', currentSessionId);
@@ -598,10 +608,10 @@ ipcMain.on('new-session', () => {
 
 // registerGlobalShortcuts function moved to ShortcutService
 function registerGlobalShortcuts_REMOVED() {
-  
+
   // First, unregister any existing shortcuts to avoid conflicts
   globalShortcut.unregisterAll();
-  
+
   // Register Cmd+Option+J for opening dashboard (J for Jarvis, Option to avoid conflicts)
   // Try different variations for cross-platform compatibility
   let dashboardShortcut = false;
@@ -611,7 +621,7 @@ function registerGlobalShortcuts_REMOVED() {
     'Cmd+Option+J',               // macOS specific
     'Cmd+Alt+J'                   // Alternative
   ];
-  
+
   for (const shortcut of shortcutVariations) {
     if (!dashboardShortcut) {
       try {
@@ -634,7 +644,7 @@ function registerGlobalShortcuts_REMOVED() {
             Logger.error('🎯 Error opening dashboard:', error);
           }
         });
-        
+
         if (dashboardShortcut) {
           Logger.success(`✅ Dashboard shortcut registered successfully: ${shortcut}`);
           break;
@@ -658,7 +668,7 @@ function registerGlobalShortcuts_REMOVED() {
           dashboardWindow.focus();
         }
       });
-      
+
       if (fallbackShortcut) {
         Logger.info('✅ Fallback Command+Shift+D dashboard shortcut registered');
       }
@@ -669,11 +679,11 @@ function registerGlobalShortcuts_REMOVED() {
 
   // Global shortcuts are now handled by Fn key monitoring and push-to-talk system
   // No additional shortcuts needed for dictation as we use push-to-talk with Fn key
-  
+
   Logger.success('✅ [Overlays] Global shortcuts configured successfully');
 
   Logger.info('Transcription: GPT-4o-mini-transcribe → Local Whisper (fallback)');
-  
+
   // Start Fn key monitoring for push-to-talk
   startHotkeyMonitoring();
 }
@@ -683,13 +693,13 @@ function startHotkeyMonitoring() {
   const appSettings = AppSettingsService.getInstance();
   const allSettings = appSettings.getSettings();
   const currentHotkey = allSettings.hotkey;
-  
+
   // Check if monitoring is already active for the same hotkey
   if (isHotkeyMonitoringActive && universalKeyService && currentHotkey === lastActiveHotkey) {
     Logger.info(`⚙ [Hotkey] Monitoring already active for ${currentHotkey}, skipping restart`);
     return;
   }
-  
+
   // Only stop if we need to change the hotkey or restart
   if (isHotkeyMonitoringActive) {
     stopHotkeyMonitoring();
@@ -697,11 +707,11 @@ function startHotkeyMonitoring() {
 
   Logger.info(`⚙ [Hotkey] Starting monitoring - Full settings:`, allSettings);
   Logger.info(`⚙ [Hotkey] Current hotkey from settings: ${currentHotkey}`);
-  
+
   // Calculate if streaming should be enabled
   const shouldUseStreaming = allSettings.useDeepgramStreaming && !allSettings.useLocalWhisper;
   Logger.info(`⚙ [Hotkey] Streaming decision: useDeepgramStreaming=${allSettings.useDeepgramStreaming}, useLocalWhisper=${allSettings.useLocalWhisper}, shouldUseStreaming=${shouldUseStreaming}`);
-  
+
   // Initialize push-to-talk service (same for all keys)
   pushToTalkService = new PushToTalkService(
     analyticsManager,
@@ -709,7 +719,7 @@ function startHotkeyMonitoring() {
     (isActive) => {
       // State change callback - send to both UI and tutorial screen
       Logger.debug(`Push-to-talk state changed: ${isActive ? 'active' : 'inactive'}`);
-      
+
       // Send to all browser windows for tutorial mode
       BrowserWindow.getAllWindows().forEach(window => {
         if (!window.isDestroyed()) {
@@ -724,7 +734,7 @@ function startHotkeyMonitoring() {
           window.webContents.send('transcription-state', isTranscribing);
         }
       });
-      
+
       // Legacy events for waveform
       if (isTranscribing) {
         waveformWindow?.webContents.send('transcription-start');
@@ -757,7 +767,7 @@ function startHotkeyMonitoring() {
   // Use UniversalKeyService for all modifier keys (fn, option, control)
   if (['fn', 'option', 'control'].includes(currentHotkey)) {
     Logger.info(`⚙ [Hotkey] Starting universal key monitoring for: ${currentHotkey}`);
-    
+
     try {
       // Initialize universal key service with callbacks
       universalKeyService = new UniversalKeyService(
@@ -777,17 +787,17 @@ function startHotkeyMonitoring() {
         universalKeyService = null;
         return;
       }
-      
+
       // Register with power management to prevent system hanging
       const powerManager = PowerManagementService.getInstance();
       powerManager.registerService('key-monitoring', universalKeyService);
-      
+
       // Update tracking variables
       isHotkeyMonitoringActive = true;
       lastActiveHotkey = currentHotkey;
-      
+
       Logger.success(`✅ [Hotkey] ${currentHotkey.charAt(0).toUpperCase() + currentHotkey.slice(1)} key monitoring active`);
-      
+
       if (pushToTalkService?.isStreamingEnabled()) {
         Logger.success('◉ [Streaming] Deepgram real-time streaming transcription ENABLED');
         Logger.info('◉ [Streaming] Press and hold your hotkey to start streaming transcription');
@@ -803,14 +813,14 @@ function startHotkeyMonitoring() {
     // Space key has been removed - fallback to 'fn'
     Logger.warning(`⚠️ [Hotkey] Space key is no longer supported. Defaulting to 'fn'`);
     appSettings.updateSettings({ hotkey: 'fn' });
-    
+
     // Restart with corrected hotkey
     setTimeout(() => startHotkeyMonitoring(), 100);
     return;
   } else {
     Logger.warning(`⚠️ [Hotkey] Unsupported key: ${currentHotkey}. Defaulting to 'fn'`);
     appSettings.updateSettings({ hotkey: 'fn' });
-    
+
     // Restart with corrected hotkey  
     setTimeout(() => startHotkeyMonitoring(), 100);
     return;
@@ -819,7 +829,7 @@ function startHotkeyMonitoring() {
 
 function stopHotkeyMonitoring() {
   Logger.info('⚙ [Lifecycle] Stopping hotkey monitoring...');
-  
+
   // Stop universal key service if running
   if (universalKeyService) {
     try {
@@ -831,7 +841,7 @@ function stopHotkeyMonitoring() {
       universalKeyService = null;
     }
   }
-  
+
   // Unregister any global shortcuts
   try {
     shortcutService.unregisterAllShortcuts();
@@ -839,7 +849,7 @@ function stopHotkeyMonitoring() {
   } catch (error) {
     Logger.error('⚙ [Lifecycle] Error unregistering global shortcuts:', error);
   }
-  
+
   // Stop push-to-talk service if active
   if (pushToTalkService?.active) {
     try {
@@ -849,10 +859,10 @@ function stopHotkeyMonitoring() {
       Logger.error('⚙ [Lifecycle] Error stopping push-to-talk service:', error);
     }
   }
-  
+
   // Clean up push-to-talk service
   pushToTalkService = null;
-  
+
   Logger.info('⚙ [Lifecycle] Hotkey monitoring cleanup complete');
 }
 
@@ -876,42 +886,42 @@ function clearSubscriptionCache() {
 async function handleHotkeyDown() {
   const keyDownStartTime = performance.now();
   Logger.debug(`⚡ [TIMING] Key down event received at ${keyDownStartTime.toFixed(2)}ms`);
-  
+
   const currentTime = Date.now();
   const timeSinceLastPress = currentTime - lastFnKeyTime;
-  
+
   Logger.debug(`🎯 [DoubleTap] Timing analysis: lastPress=${lastFnKeyTime}, current=${currentTime}, diff=${timeSinceLastPress}ms, handsFreeModeActive=${isHandsFreeModeActive}`);
-  
+
   // Early check: if we're already handling a hands-free stop, ignore this press
   if (pendingHandsFreeStop) {
     Logger.debug('🚫 [HandsFree] Ignoring key press - hands-free stop in progress');
     return;
   }
-  
+
   const afterChecksTime = performance.now();
   Logger.debug(`⚡ [TIMING] After initial checks: ${(afterChecksTime - keyDownStartTime).toFixed(2)}ms`);
-  
+
   // ⚡ IMMEDIATE UI FEEDBACK - Start UI immediately without ANY delays
   const beforeUITime = performance.now();
   Logger.debug(`⚡ [TIMING] Before UI feedback: ${(beforeUITime - keyDownStartTime).toFixed(2)}ms`);
-  
+
   // ⚡ INSTANT UI UPDATE - Multiple channels for immediate feedback
   // Check if waveform should be shown based on user settings
   const currentAppSettings = AppSettingsService.getInstance().getSettings();
   const shouldShowWaveform = currentAppSettings.showWaveform !== false;
-  
+
   if (waveformWindow && !waveformWindow.isDestroyed()) {
     // Only show waveform if setting allows it
     if (shouldShowWaveform) {
       waveformWindow.show();
     }
-    
+
     // Send to waveform window first (primary UI) - even if hidden, for audio feedback
     waveformWindow.webContents.send('push-to-talk-start');
-    
+
     // ⚡ INSTANT MICROPHONE STATUS - Send recording status immediately
     waveformWindow.webContents.send('recording-status', { recording: true, active: true });
-    
+
     // Also update any other windows that might show status
     const currentDashboard = getDashboardWindow();
     if (currentDashboard && !currentDashboard.isDestroyed()) {
@@ -922,7 +932,7 @@ async function handleHotkeyDown() {
   } else {
     Logger.warning('⚠️ [UI] Waveform window not available for immediate feedback');
   }
-  
+
   const afterUITime = performance.now();
   Logger.debug(`⚡ [TIMING] After UI feedback: ${(afterUITime - keyDownStartTime).toFixed(2)}ms (UI took ${(afterUITime - beforeUITime).toFixed(2)}ms)`);
 
@@ -930,17 +940,17 @@ async function handleHotkeyDown() {
   if (isHandsFreeModeActive) {
     if (pendingHandsFreeStop) return; // Prevent multiple stop requests
     pendingHandsFreeStop = true;
-    
+
     Logger.info('✋ [HandsFree] Single key press in hands-free mode - stopping recording gracefully');
     isHandsFreeModeActive = false;
-    
+
     // If there's an active recording, stop it gracefully (not cancel)
     if (pushToTalkService && (pushToTalkService.active || pushToTalkService.transcribing)) {
       Logger.info('🛑 [HandsFree] Stopping active recording/transcription gracefully');
-      
+
       // Stop the recording gracefully - this will trigger transcription
       await pushToTalkService.stop();
-      
+
       // Clear hands-free mode flag after stopping
       (pushToTalkService as any).isHandsFreeMode = false;
     } else {
@@ -950,44 +960,44 @@ async function handleHotkeyDown() {
         (pushToTalkService as any).isHandsFreeMode = false;
       }
     }
-    
+
     // Update UI to show hands-free mode has ended
     waveformWindow?.webContents.send('dictation-stop');
-    
+
     // Reset dictation mode when exiting hands-free
     setDictationMode(false);
     Logger.info('💬 [HandsFree] Dictation mode disabled - returning to normal mode');
-    
+
     // Record Jarvis usage for nudge system
     if (userNudgeService) {
       userNudgeService.recordJarvisUsage();
       Logger.debug('🔔 [Nudge] Recorded Jarvis usage (exit hands-free)');
     }
-    
+
     // Reset timing and flags
     lastFnKeyTime = 0;
     pendingHandsFreeStop = false;
     return;
   }
-  
+
   // Clear any pending single-tap processing
   if (pendingSingleTapTimeout) {
     clearTimeout(pendingSingleTapTimeout);
     pendingSingleTapTimeout = null;
     Logger.debug('🚫 [DoubleTap] Cleared pending single-tap timeout');
   }
-  
+
   const afterTimeoutClearTime = performance.now();
   Logger.debug(`⚡ [TIMING] After timeout clear: ${(afterTimeoutClearTime - keyDownStartTime).toFixed(2)}ms`);
-  
+
   // Check for double-tap (quick second press) - adjusted timing for optimized debounce
   if (lastFnKeyTime > 0 && timeSinceLastPress < 600 && timeSinceLastPress > 20) {
     const doubleTapDetectedTime = performance.now();
     Logger.debug(`⚡ [TIMING] Double-tap detected at: ${(doubleTapDetectedTime - keyDownStartTime).toFixed(2)}ms`);
-    
+
     Logger.info('🎯 Double Fn key detected - entering hands-free dictation');
     Logger.debug(`🎯 [DoubleTap] Double-tap confirmed: ${timeSinceLastPress}ms between presses`);
-    
+
     // Cancel any active operation first (including the one we might have just started)
     if (pushToTalkService?.active || pushToTalkService?.transcribing || (pushToTalkService as any)?.startedFromSingleTap) {
       Logger.info('🚫 [Cancel] Cancelling active operation before hands-free mode');
@@ -1003,27 +1013,27 @@ async function handleHotkeyDown() {
       }
       waveformWindow?.webContents.send('push-to-talk-cancel');
       waveformWindow?.webContents.send('transcription-complete');
-      
+
       // 🔧 MINIMAL DELAY: Hardstop is now non-blocking, so minimal delay needed
       Logger.debug('⏳ [AudioSession] Minimal audio session cleanup delay...');
       await new Promise(resolve => setTimeout(resolve, 10)); // 10ms minimal buffer (reduced from 50ms)
     }
-    
+
     // Record Jarvis usage for nudge system
     if (userNudgeService) {
       userNudgeService.recordJarvisUsage();
       Logger.debug('🔔 [Nudge] Recorded Jarvis usage (double Fn key)');
     }
-    
+
     // ⚡ FAST RESPONSE: Enter hands-free mode immediately - subscription check happens in background
     Logger.info('🎤 Starting hands-free dictation');
     isHandsFreeModeActive = true;
-    
+
     // Set hands-free mode flag in push-to-talk service to enable streaming
     if (pushToTalkService) {
       (pushToTalkService as any).isHandsFreeMode = true;
     }
-    
+
     // Show waveform if setting allows
     const handsFreeSettings = AppSettingsService.getInstance().getSettings();
     if (handsFreeSettings.showWaveform !== false && waveformWindow && !waveformWindow.isDestroyed()) {
@@ -1031,7 +1041,7 @@ async function handleHotkeyDown() {
     }
     waveformWindow?.webContents.send('dictation-start');
     lastFnKeyTime = 0; // Reset to prevent triple-tap issues
-    
+
     // ⚡ HANDS-FREE MODE: Start recording immediately for hands-free dictation
     try {
       if (pushToTalkService) {
@@ -1048,17 +1058,17 @@ async function handleHotkeyDown() {
       }
       waveformWindow?.webContents.send('dictation-stop');
     }
-    
+
     // Set dictation mode to true for hands-free mode
     setDictationMode(true);
     Logger.info('💬 [HandsFree] Dictation mode enabled - all input will be treated as dictation');
     return;
   }
-  
+
   // Update timing for this press
   lastFnKeyTime = currentTime;
   fnKeyPressed = true;
-  
+
   // Send state change event for tutorial purposes - send to all windows
   getDashboardWindow()?.webContents.send('fn-key-state-change', true);
   // Also send to onboarding window if it exists
@@ -1067,28 +1077,28 @@ async function handleHotkeyDown() {
       window.webContents.send('fn-key-state-change', true);
     }
   });
-  
+
   // ⚡ PERFORMANCE OPTIMIZATION: Run authentication checks in parallel without blocking
   const authCheckStartTime = performance.now();
-  
+
   // Use setImmediate to defer slow authentication check to next tick
   setImmediate(async () => {
     const isOnboardingComplete = hasCompletedOnboarding();
     const currentUserId = analyticsManager.getCurrentUserId();
     const isAuthenticated = currentUserId !== null && currentUserId !== 'default-user';
-    
+
     Logger.debug(`🔍 [Auth] UserID: ${currentUserId}`);
     Logger.debug(`🔍 [Auth] Onboarding Complete: ${isOnboardingComplete}`);
     Logger.debug(`🔍 [Auth] Is Authenticated: ${isAuthenticated}`);
 
     // Allow recording if onboarding is complete (no auth gate in open-source build)
     const shouldAllowRecording = isOnboardingComplete;
-    
+
     Logger.info(`🔧 [Auth] Final decision - Allow Recording: ${shouldAllowRecording}`);
-    
+
     const authCheckEndTime = performance.now();
     Logger.debug(`⚡ [TIMING] Auth check completed in: ${(authCheckEndTime - authCheckStartTime).toFixed(2)}ms`);
-    
+
     // PRIORITY: If voice tutorial mode is active, always allow real transcription
     if (isVoiceTutorialMode) {
       Logger.info('🎯 [Tutorial] Voice tutorial mode active - enabling REAL transcription for demo');
@@ -1100,37 +1110,37 @@ async function handleHotkeyDown() {
       return; // Exit early to prevent actual recording during tutorials
     }
   });
-  
+
   // ⚡ START RECORDING IMMEDIATELY - Don't wait for auth check
   Logger.debug('🔧 fn key pressed - Push-to-talk activated immediately');
   Logger.debug('🔧 ⚙ [fn] Key down event - no delay');
-  
+
   // 🔧 SMART DEBOUNCING: Delay single-tap processing to allow for double-tap
   // Start push-to-talk immediately if not already active
   if (!pushToTalkService?.active && !pushToTalkService?.transcribing) {
     // Start normal push-to-talk IMMEDIATELY
     Logger.debug('🔧 fn key pressed - Push-to-talk activated immediately');
     Logger.debug('🔧 ⚙ [fn] Key down event - no delay');
-    
+
     // ⚡ INSTANT VISUAL FEEDBACK - Start UI immediately without waiting for audio
     const beforeUITime = performance.now();
     Logger.debug(`⚡ [TIMING] Before UI feedback: ${(beforeUITime - keyDownStartTime).toFixed(2)}ms`);
-    
+
     // Show waveform if setting allows
     const singleTapSettings = AppSettingsService.getInstance().getSettings();
     if (singleTapSettings.showWaveform !== false && waveformWindow && !waveformWindow.isDestroyed()) {
       waveformWindow.show();
     }
     waveformWindow?.webContents.send('push-to-talk-start');
-    
+
     const afterUITime = performance.now();
     Logger.debug(`⚡ [TIMING] After UI feedback: ${(afterUITime - keyDownStartTime).toFixed(2)}ms (UI took ${(afterUITime - beforeUITime).toFixed(2)}ms)`);
-    
+
     if (pushToTalkService) {
       try {
         // Mark that we started from a potential single tap
         (pushToTalkService as any).startedFromSingleTap = true;
-        
+
         // 🚀 INSTANT MICROPHONE ACCESS - Start immediately, no deferral at all
         Logger.debug('🎤 [Immediate] Starting push-to-talk audio recording...');
         pushToTalkService.start().then(() => {
@@ -1151,7 +1161,7 @@ async function handleHotkeyDown() {
     // Don't cancel if we're just in hands-free mode idle state
     if (pushToTalkService?.active || pushToTalkService?.transcribing) {
       Logger.info('🚫 [Cancel] Function key pressed during active operation - cancelling current flow');
-      
+
       // Cancel the current operation immediately
       if (pushToTalkService) {
         pushToTalkService.hardStop();
@@ -1164,7 +1174,7 @@ async function handleHotkeyDown() {
       Logger.info('🚫 [Cancel] Current operation cancelled - ready for new recording');
     }
   }
-  
+
   // Still set timeout to detect double-tap, but it won't delay single-tap
   pendingSingleTapTimeout = setTimeout(() => {
     pendingSingleTapTimeout = null;
@@ -1174,14 +1184,14 @@ async function handleHotkeyDown() {
 
 async function handleHotkeyUp() {
   fnKeyPressed = false;
-  
+
   // ⚡ INSTANT UI UPDATE - Send status updates immediately
   if (waveformWindow && !waveformWindow.isDestroyed()) {
     waveformWindow.webContents.send('push-to-talk-stop');
     // ⚡ INSTANT MICROPHONE STATUS - Send recording stop immediately
     waveformWindow.webContents.send('recording-status', { recording: false, active: false });
   }
-  
+
   // Send state change event for tutorial purposes - send to all windows
   getDashboardWindow()?.webContents.send('fn-key-state-change', false);
   // Also send to onboarding window if it exists
@@ -1192,13 +1202,13 @@ async function handleHotkeyUp() {
       window.webContents.send('recording-status', { recording: false, active: false });
     }
   });
-  
+
   // ⚡ PERFORMANCE OPTIMIZATION: Run authentication checks in parallel without blocking
   setImmediate(async () => {
     const isOnboardingComplete = hasCompletedOnboarding();
     const currentUserId = analyticsManager.getCurrentUserId();
     const isAuthenticated = currentUserId !== null && currentUserId !== 'default-user';
-    
+
     // PRIORITY: If voice tutorial mode is active, always allow real transcription
     if (isVoiceTutorialMode) {
       Logger.info('🎯 [Tutorial] Voice tutorial mode active - enabling REAL transcription processing');
@@ -1208,17 +1218,17 @@ async function handleHotkeyUp() {
       return; // Exit early to prevent actual recording operations during tutorials
     }
   });
-  
+
   // ⚡ CONTINUE IMMEDIATELY - Don't wait for auth check
-  
+
   // Clear the single-tap flag
   if (pushToTalkService) {
     (pushToTalkService as any).startedFromSingleTap = false;
   }
-  
+
   // DON'T clear pending timeout immediately - let it execute for single-tap
   // The timeout will check if the service is active and handle accordingly
-  
+
   // Skip push-to-talk release if hands-free mode is active or was just exited
   if (isHandsFreeModeActive || pendingHandsFreeStop) {
     Logger.debug('Fn key released - hands-free mode active or pending stop, skipping push-to-talk release');
@@ -1230,27 +1240,27 @@ async function handleHotkeyUp() {
     }
     return;
   }
-  
+
   Logger.debug('Fn key released');
-  
+
   // Handle push-to-talk release - check for BOTH active state AND recording start time
   // This ensures we only stop if we actually started recording
   if (pushToTalkService && pushToTalkService.active && pushToTalkService.recordingStartTime) {
     Logger.debug('Fn key released - stopping push-to-talk...');
     const duration = Date.now() - pushToTalkService.recordingStartTime;
     Logger.performance('Push-to-talk duration', duration);
-    
+
     // 🕒 START END-TO-END TIMING MEASUREMENT
     const keyReleaseTime = Date.now();
     (global as any).keyReleaseTime = keyReleaseTime;
     console.log('\x1b[45m\x1b[37m⏱️  [TIMING] Function key released - starting end-to-end measurement\x1b[0m');
-    
+
     // ⚡ IMMEDIATE UI FEEDBACK - Stop animation and play synthesized sound
     waveformWindow?.webContents.send('push-to-talk-stop');
-    
+
     // Let the service handle its own lifecycle and transcription completion
     // Don't interfere with the service state here
-    
+
     // ⏱️ IMPROVED TIMING: Stop recording and let service complete transcription
     stopPushToTalk();
   } else if (pushToTalkService) {
@@ -1271,10 +1281,10 @@ if (!app.isDefaultProtocolClient('jarvis')) {
 // Handle OAuth callback protocol
 app.on('open-url', async (event, url) => {
   event.preventDefault();
-  
+
   Logger.info('Protocol URL received:', url);
   console.log('Protocol URL received:', url);
-  
+
   if (url.startsWith('jarvis://auth/callback')) {
     // Parse OAuth callback parameters (matching electron-app pattern)
     const urlObj = new URL(url);
@@ -1284,8 +1294,8 @@ app.on('open-url', async (event, url) => {
     const userEmail = urlObj.searchParams.get('user_email');
     const userName = urlObj.searchParams.get('user_name');
     const userId = urlObj.searchParams.get('user_id');
-    
-    Logger.info('OAuth callback received', { 
+
+    Logger.info('OAuth callback received', {
       sessionId: sessionId ? 'Present' : 'Missing',
       accessToken: accessToken ? 'Present' : 'Missing',
       refreshToken: refreshToken ? 'Present' : 'Missing',
@@ -1293,7 +1303,7 @@ app.on('open-url', async (event, url) => {
       userName: userName || 'Not provided',
       userId: userId || 'Not provided'
     });
-    
+
     // Send OAuth callback to renderer process with all parameters
     const currentDashboardWindow = getDashboardWindow();
     if (currentDashboardWindow && !currentDashboardWindow.isDestroyed()) {
@@ -1305,16 +1315,16 @@ app.on('open-url', async (event, url) => {
         user_name: userName,
         user_id: userId
       });
-      
+
       Logger.info('Sent OAuth callback to renderer');
-      
+
       // Set user ID in analytics manager immediately after auth
       if (userId) {
         Logger.info('🔥 [Main] Setting user ID in analytics manager immediately:', userId);
         try {
           await analyticsManager.setUserId(userId);
           Logger.info('✅ [Main] Successfully set user ID in analytics manager:', userId);
-          
+
           // Save auth state to main process storage AND set SecureAPI token
           if (userEmail && userName && accessToken) {
             const authState: AuthState = {
@@ -1326,17 +1336,17 @@ app.on('open-url', async (event, url) => {
             };
             authService.saveAuthState(authState);
             Logger.info('💾 [Main] Saved OAuth auth state to main process storage');
-            
+
             // Initialize Jarvis Core if not already initialized
             if (!jarvisCore) {
               Logger.info('▶ [Auth] User authenticated via OAuth - initializing Jarvis Core...');
               await initializeJarvis();
             }
-            
+
             // Check if onboarding is completed and activate overlays if so
             const onboardingCompleted = hasCompletedOnboarding();
             Logger.info('🔍 [Main] Checking onboarding status after OAuth:', { onboardingCompleted });
-            
+
             if (onboardingCompleted) {
               Logger.info('🚀 [Main] User authenticated via OAuth and onboarding completed - activating overlays');
               activateOverlaysAndShortcuts();
@@ -1344,18 +1354,18 @@ app.on('open-url', async (event, url) => {
               Logger.info('⏳ [Main] User authenticated via OAuth but onboarding not completed - waiting for onboarding');
             }
           }
-            } catch (error) {
-              Logger.error('❌ [Main] Failed to set user ID in analytics manager:', error);
-            }
-          } else {
-            Logger.warning('❌ [Main] No userId available for analytics');
-          }
-      
+        } catch (error) {
+          Logger.error('❌ [Main] Failed to set user ID in analytics manager:', error);
+        }
+      } else {
+        Logger.warning('❌ [Main] No userId available for analytics');
+      }
+
       // Focus the main window
       currentDashboardWindow.focus();
     } else {
       Logger.warning('Dashboard window not available for OAuth callback - attempting to create one');
-      
+
       // Try to create/get dashboard window if it doesn't exist
       try {
         const newDashboardWindow = windowManager.createDashboardWindow();
@@ -1370,16 +1380,16 @@ app.on('open-url', async (event, url) => {
               timestamp: Date.now()
             };
             authService.saveAuthState(authState);
-            
+
             // Set analytics user ID
             await analyticsManager.setUserId(userId);
-            
+
             // Initialize Jarvis Core if needed
             if (!jarvisCore) {
               await initializeJarvis();
             }
           }
-          
+
           // Wait a moment for the window to be ready
           setTimeout(() => {
             if (!newDashboardWindow.isDestroyed()) {
@@ -1413,7 +1423,7 @@ function hasCompletedOnboarding(): boolean {
         return true;
       }
     }
-    
+
     // Onboarding not completed yet
     Logger.info('📋 [Onboarding] Not completed - showing onboarding flow');
     return false;
@@ -1428,11 +1438,11 @@ function markOnboardingCompleted(): void {
   try {
     const configDir = path.join(os.homedir(), '.jarvis');
     const configPath = path.join(configDir, 'config.json');
-    
+
     if (!fs.existsSync(configDir)) {
       fs.mkdirSync(configDir, { recursive: true });
     }
-    
+
     const config = { onboardingCompleted: true };
     fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
     Logger.info('Onboarding marked as completed');
@@ -1472,7 +1482,7 @@ app.whenReady().then(async () => {
   if (!fs.existsSync(logDir)) {
     fs.mkdirSync(logDir, { recursive: true });
   }
-  
+
   Logger.info('🚀 [Startup] Jarvis starting up');
 
   // Initialize Power Management Service FIRST to prevent system hanging
@@ -1492,22 +1502,22 @@ app.whenReady().then(async () => {
 
   // Always create dashboard window to show React app (login/onboarding/dashboard)
   createDashboardWindow();
-  
+
   // Set up application menu with "Check for Updates" option
   createApplicationMenu();
-  
+
   // Create menu bar tray
   createMenuBarTray();
-  
+
   // Don't create overlay windows or register shortcuts at startup
   // They will only be activated after BOTH authentication AND onboarding are completed
   Logger.info('App ready - dashboard created, waiting for authentication and onboarding completion');
-  
+
   // Defer heavy operations to prevent blocking startup
   startupOptimizer.deferTask(async () => {
     // Check for updates after a delay (force in dev mode for testing)
     updateService.forceCheckForUpdates();
-    
+
     // Only initialize Jarvis if we have saved auth state, otherwise wait for user login
     const savedAuthState = loadAuthState();
     if (savedAuthState) {
@@ -1517,7 +1527,7 @@ app.whenReady().then(async () => {
       Logger.info('⏳ [Startup] No valid auth state - Jarvis Core will initialize after user login');
     }
   });
-  
+
   // Set up periodic permission refresh to handle long uptime issues
   setInterval(() => {
     try {
@@ -1534,21 +1544,21 @@ app.on('window-all-closed', () => process.platform !== 'darwin' && app.quit());
 app.on('before-quit', async () => {
   // Unregister global shortcuts
   shortcutService.unregisterAllShortcuts();
-  
+
   // Stop hotkey monitoring
   stopHotkeyMonitoring();
-  
+
   // Stop any active push-to-talk recordings
   if (pushToTalkService) {
     pushToTalkService.stop().catch(error => Logger.error('Error stopping recording:', error));
   }
-  
+
   // Flush any pending analytics updates
   if (analyticsManager) {
     Logger.info('📊 [Analytics] Flushing pending updates before quit');
     await analyticsManager.flush().catch(error => Logger.error('Error flushing analytics:', error));
   }
-  
+
   if (jarvisCore) {
     await jarvisCore.shutdown();
   }
@@ -1574,12 +1584,12 @@ app.on('will-quit', () => {
 async function clearGlobalContext(): Promise<void> {
   try {
     Logger.debug('🧹 [Global] Clearing global context');
-    
+
     // Clear agent memory through push-to-talk service
     if (pushToTalkService) {
       await pushToTalkService.clearAgentMemory();
     }
-    
+
     Logger.debug('✅ [Global] Global context cleared successfully');
   } catch (error) {
     Logger.error('❌ [Global] Failed to clear global context:', error);

@@ -6,6 +6,16 @@ interface ApiKeySetupScreenProps {
   onApiKeysChange?: (hasKeys: boolean) => void;
 }
 
+// Local Whisper model options
+const WHISPER_MODELS = [
+  { id: 'tiny.en', name: 'Tiny (English)', size: '75 MB', speed: 'Fastest' },
+  { id: 'tiny', name: 'Tiny (Multi)', size: '75 MB', speed: 'Fastest' },
+  { id: 'base.en', name: 'Base (English)', size: '142 MB', speed: 'Fast' },
+  { id: 'base', name: 'Base (Multi)', size: '142 MB', speed: 'Fast' },
+  { id: 'small.en', name: 'Small (English)', size: '466 MB', speed: 'Medium' },
+  { id: 'small', name: 'Small (Multi)', size: '466 MB', speed: 'Medium' },
+];
+
 const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeysChange }) => {
   const [deepgramKey, setDeepgramKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
@@ -16,12 +26,25 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
   const [hasExistingKeys, setHasExistingKeys] = useState(false);
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
 
+  // Ollama state
+  const [useOllama, setUseOllama] = useState(false);
+  const [ollamaUrl, setOllamaUrl] = useState('http://localhost:11434');
+  const [ollamaModel, setOllamaModel] = useState('llama3');
+  const [availableOllamaModels, setAvailableOllamaModels] = useState<string[]>([]);
+  const [ollamaStatus, setOllamaStatus] = useState<'connected' | 'error' | 'checking' | 'idle'>('idle');
+
+  // Whisper Model state
+  const [localWhisperModel, setLocalWhisperModel] = useState('tiny.en');
+  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [downloadedModels, setDownloadedModels] = useState<string[]>([]);
+
   // Load existing keys and settings on mount
   useEffect(() => {
     const loadKeysAndSettings = async () => {
       try {
         const electronAPI = (window as any).electronAPI;
-        
+
         // Load API keys
         if (electronAPI?.getApiKeys) {
           const keys = await electronAPI.getApiKeys();
@@ -36,13 +59,27 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
             }
           }
         }
-        
-        // Load app settings to check if local whisper is enabled
+
         if (electronAPI?.appGetSettings) {
           const settings = await electronAPI.appGetSettings();
-          if (settings?.useLocalWhisper) {
-            setUseLocalWhisper(true);
+          if (settings) {
+            if (settings.useLocalWhisper) setUseLocalWhisper(true);
+            if (settings.localWhisperModel) setLocalWhisperModel(settings.localWhisperModel);
+            if (settings.useOllama) setUseOllama(true);
+            if (settings.ollamaUrl) setOllamaUrl(settings.ollamaUrl);
+            if (settings.ollamaModel) setOllamaModel(settings.ollamaModel);
+
+            // If enabled, fetch models immediately
+            if (settings.useOllama || useOllama) {
+              fetchOllamaModels(settings.ollamaUrl || ollamaUrl);
+            }
           }
+        }
+
+        // Load downloaded whisper models
+        if (electronAPI?.whisperGetDownloadedModels) {
+          const models = await electronAPI.whisperGetDownloadedModels();
+          setDownloadedModels(models || []);
         }
       } catch (error) {
         console.error('Failed to load API keys:', error);
@@ -53,11 +90,89 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
 
   // Notify parent when ready to continue
   useEffect(() => {
-    // User can continue if they have Gemini key (required for AI) 
-    // OR if they just want to try local-only mode
-    const canContinue = geminiKey.trim().length > 0 || useLocalWhisper;
-    onApiKeysChange?.(canContinue);
-  }, [geminiKey, useLocalWhisper, onApiKeysChange]);
+    // Always allow continuing, keys are optional now
+    onApiKeysChange?.(true);
+  }, [geminiKey, useLocalWhisper, useOllama, onApiKeysChange]);
+
+  const fetchOllamaModels = async (url: string) => {
+    if (!url) return;
+
+    setOllamaStatus('checking');
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI?.ollamaGetModels) {
+        const result = await electronAPI.ollamaGetModels(url);
+        if (result.success && result.models) {
+          setAvailableOllamaModels(result.models);
+          setOllamaStatus('connected');
+
+          // Auto-select first model if none selected or current one invalid
+          if (result.models.length > 0 && (!ollamaModel || !result.models.includes(ollamaModel))) {
+            // Prefer llama3 or llama2 or mistral if available
+            const preferred = result.models.find((m: string) => m.includes('llama3')) ||
+              result.models.find((m: string) => m.includes('mistral')) ||
+              result.models.find((m: string) => m.includes('llama2')) ||
+              result.models[0];
+            setOllamaModel(preferred);
+          }
+        } else {
+          setOllamaStatus('error');
+          setAvailableOllamaModels([]);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch Ollama models:', error);
+      setOllamaStatus('error');
+    }
+  };
+
+  const handleLocalWhisperModelChange = async (modelId: string) => {
+    try {
+      const electronAPI = (window as any).electronAPI;
+
+      // Check if model is already downloaded
+      const isDownloaded = downloadedModels.includes(modelId);
+
+      if (!isDownloaded && electronAPI?.whisperDownloadModel) {
+        // Start downloading
+        setDownloadingModel(modelId);
+        setDownloadProgress(0);
+
+        // Set up progress listener
+        electronAPI.onWhisperDownloadProgress?.((data: { modelId: string; percent: number }) => {
+          if (data.modelId === modelId) {
+            setDownloadProgress(data.percent);
+          }
+        });
+
+        // Download the model
+        const result = await electronAPI.whisperDownloadModel(modelId);
+
+        // Clean up listener
+        electronAPI.removeWhisperDownloadProgressListener?.();
+
+        if (!result?.success) {
+          console.error('Failed to download model');
+          setDownloadingModel(null);
+          return;
+        }
+
+        // Update downloaded models list
+        setDownloadedModels(prev => [...prev, modelId]);
+        setDownloadingModel(null);
+      }
+
+      // Save the model selection
+      // setSaving(true); // Don't block whole UI, just update locally + background save
+      if (electronAPI?.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({ localWhisperModel: modelId });
+        setLocalWhisperModel(modelId);
+      }
+    } catch (error) {
+      console.error('Failed to change whisper model:', error);
+      setDownloadingModel(null);
+    }
+  };
 
   const handleSave = async () => {
     setSaving(true);
@@ -70,7 +185,13 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
         });
       }
       if (electronAPI?.appUpdateSettings) {
-        await electronAPI.appUpdateSettings({ useLocalWhisper });
+        await electronAPI.appUpdateSettings({
+          useLocalWhisper,
+          localWhisperModel,
+          useOllama,
+          ollamaUrl,
+          ollamaModel
+        });
       }
       setSaved(true);
       setHasExistingKeys(true);
@@ -142,16 +263,15 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
           <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs font-bold text-white">1</div>
           <h3 className={`text-sm font-semibold ${theme.text.primary}`}>Choose Transcription Method</h3>
         </div>
-        
+
         <div className="grid grid-cols-2 gap-3">
           {/* Local Whisper Option */}
           <button
             onClick={toggleLocalWhisper}
-            className={`p-4 rounded-xl text-left transition-all ${
-              useLocalWhisper 
-                ? 'bg-green-500/10 border-2 border-green-500/40' 
-                : 'bg-white/5 border-2 border-white/10 hover:border-white/20'
-            }`}
+            className={`p-4 rounded-xl text-left transition-all ${useLocalWhisper
+              ? 'bg-green-500/10 border-2 border-green-500/40'
+              : 'bg-white/5 border-2 border-white/10 hover:border-white/20'
+              }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-green-400">FREE</span>
@@ -168,11 +288,10 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
           {/* Deepgram Option */}
           <button
             onClick={() => setUseLocalWhisper(false)}
-            className={`p-4 rounded-xl text-left transition-all ${
-              !useLocalWhisper 
-                ? 'bg-blue-500/10 border-2 border-blue-500/40' 
-                : 'bg-white/5 border-2 border-white/10 hover:border-white/20'
-            }`}
+            className={`p-4 rounded-xl text-left transition-all ${!useLocalWhisper
+              ? 'bg-blue-500/10 border-2 border-blue-500/40'
+              : 'bg-white/5 border-2 border-white/10 hover:border-white/20'
+              }`}
           >
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-medium text-blue-400">$200 FREE</span>
@@ -186,6 +305,42 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
             <p className={`text-xs ${theme.text.tertiary}`}>Fastest, real-time streaming</p>
           </button>
         </div>
+
+
+
+        {/* Local Whisper Model Selector (only show if local selected) */}
+        {useLocalWhisper && (
+          <div className="mt-4">
+            <label className={`text-xs font-medium ${theme.text.secondary} mb-2 block`}>
+              Select Whisper Model {downloadingModel && <span className="text-emerald-400 ml-2">Downloading... {Math.round(downloadProgress)}%</span>}
+            </label>
+            <div className="relative">
+              <select
+                value={localWhisperModel}
+                onChange={(e) => handleLocalWhisperModelChange(e.target.value)}
+                disabled={!!downloadingModel}
+                className={`w-full bg-black/40 rounded-xl px-4 py-2.5 text-white border border-white/20 focus:border-white/40 focus:outline-none transition-colors text-xs appearance-none ${downloadingModel ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+              >
+                {WHISPER_MODELS.map((model) => {
+                  const isDownloaded = downloadedModels.includes(model.id);
+                  return (
+                    <option key={model.id} value={model.id} className="bg-gray-900 text-white py-2">
+                      {model.name} - {model.size} {isDownloaded ? '✓' : '↓'}
+                    </option>
+                  );
+                })}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg className="w-4 h-4 text-white/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </div>
+            <p className={`text-[10px] ${theme.text.tertiary} mt-2`}>
+              Smaller models are faster. 'Tiny' is usually sufficient for dictation.
+            </p>
+          </div>
+        )}
 
         {/* Deepgram Key Input (only show if cloud selected) */}
         {!useLocalWhisper && (
@@ -219,56 +374,139 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
         )}
       </div>
 
-      {/* Step 2: AI Key (Required) */}
+      {/* Step 2: AI Intelligence */}
       <div className={`${theme.glass.primary} ${theme.radius.xl} p-5 ${theme.shadow} mb-4`}>
         <div className="flex items-center gap-2 mb-4">
           <div className="w-6 h-6 bg-white/10 rounded-full flex items-center justify-center text-xs font-bold text-white">2</div>
-          <h3 className={`text-sm font-semibold ${theme.text.primary}`}>Add Gemini API Key</h3>
-          <span className="px-2 py-0.5 text-xs font-medium bg-amber-500/10 text-amber-400 rounded-md border border-amber-500/20">
-            Required
-          </span>
+          <h3 className={`text-sm font-semibold ${theme.text.primary}`}>Choose AI Intelligence</h3>
         </div>
-        
-        <p className={`text-xs ${theme.text.tertiary} mb-3`}>
-          Gemini formats your speech, fixes grammar, and powers AI commands. Free tier: 1M tokens/day!
-        </p>
-        
-        <div className="flex items-center justify-between mb-2">
-          <label className={`text-xs font-medium ${theme.text.secondary}`}>Gemini API Key</label>
-          <button
-            onClick={() => openExternalLink('https://aistudio.google.com/app/apikey')}
-            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            Get free key →
-          </button>
+
+        <div className="space-y-4">
+          {/* Option A: Gemini */}
+          <div className={`p-4 rounded-xl border transition-all ${!useOllama ? 'bg-amber-500/10 border-amber-500/40' : 'bg-white/5 border-white/10'}`}>
+            <button className="w-full text-left flex items-center justify-between mb-2" onClick={() => setUseOllama(false)}>
+              <div className="flex items-center gap-2">
+                <h4 className={`text-sm font-medium ${theme.text.primary}`}>Option A: Cloud AI (Gemini)</h4>
+                {!useOllama && <span className="text-xs text-amber-400 font-medium">Selected</span>}
+              </div>
+            </button>
+
+            <div className={`transition-all duration-300 ${useOllama ? 'opacity-50' : 'opacity-100'}`}>
+              <div className="flex items-center justify-between mb-2">
+                <label className={`text-xs font-medium ${theme.text.secondary}`}>Gemini API Key (Free)</label>
+                <button
+                  onClick={() => openExternalLink('https://aistudio.google.com/app/apikey')}
+                  className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  Get free key →
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type={showGeminiKey ? 'text' : 'password'}
+                  value={geminiKey}
+                  onChange={(e) => {
+                    setGeminiKey(e.target.value);
+                    if (e.target.value) setUseOllama(false);
+                  }}
+                  placeholder="AIza..."
+                  className={`w-full bg-black/40 rounded-lg px-4 py-2.5 pr-16 text-white placeholder-white/40 border ${geminiKey.trim() ? 'border-green-500/40' : 'border-white/20'
+                    } focus:border-white/50 focus:outline-none transition-colors font-mono text-xs`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGeminiKey(!showGeminiKey)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-xs"
+                >
+                  {showGeminiKey ? 'Hide' : 'Show'}
+                </button>
+              </div>
+              <p className={`text-xs ${theme.text.tertiary} mt-2`}>
+                Highest accuracy. 1M free tokens/day.
+              </p>
+            </div>
+          </div>
+
+          {/* Option B: Ollama */}
+          <div className={`p-4 rounded-xl border transition-all ${useOllama ? 'bg-emerald-500/10 border-emerald-500/40' : 'bg-white/5 border-white/10'}`}>
+            <button className="w-full text-left flex items-center justify-between mb-2" onClick={() => setUseOllama(true)}>
+              <div className="flex items-center gap-2">
+                <h4 className={`text-sm font-medium ${theme.text.primary}`}>Option B: Local AI (Ollama)</h4>
+                {useOllama && <span className="text-xs text-emerald-400 font-medium">Selected</span>}
+              </div>
+              {useOllama && (
+                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              )}
+            </button>
+
+            {useOllama && (
+              <div className="space-y-3 mt-3 animate-fadeIn">
+                <div>
+                  <label className={`block text-xs font-medium ${theme.text.secondary} mb-1 flex items-center justify-between`}>
+                    <span>Ollama URL</span>
+                    <span className={`text-[10px] ${ollamaStatus === 'connected' ? 'text-green-400' :
+                      ollamaStatus === 'error' ? 'text-red-400' : 'text-gray-500'
+                      }`}>
+                      {ollamaStatus === 'connected' ? 'Connected' :
+                        ollamaStatus === 'error' ? 'Connection Failed' :
+                          ollamaStatus === 'checking' ? 'Checking...' : ''}
+                    </span>
+                  </label>
+                  <input
+                    type="text"
+                    value={ollamaUrl}
+                    onChange={(e) => setOllamaUrl(e.target.value)}
+                    onBlur={() => fetchOllamaModels(ollamaUrl)}
+                    className={`w-full bg-black/40 rounded-lg px-3 py-2 text-white border focus:outline-none text-xs ${ollamaStatus === 'error' ? 'border-red-500/50' :
+                      ollamaStatus === 'connected' ? 'border-green-500/50' : 'border-emerald-500/30'
+                      }`}
+                    placeholder="http://localhost:11434"
+                  />
+                </div>
+                <div>
+                  <label className={`block text-xs font-medium ${theme.text.secondary} mb-1`}>Model Name</label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      list="ollama-models-list-onboarding"
+                      value={ollamaModel}
+                      onChange={(e) => setOllamaModel(e.target.value)}
+                      onFocus={() => {
+                        if (availableOllamaModels.length === 0) fetchOllamaModels(ollamaUrl);
+                      }}
+                      className="w-full bg-black/40 rounded-lg px-3 py-2 text-white border border-emerald-500/30 focus:outline-none text-xs"
+                      placeholder="Type or select model..."
+                    />
+                    <datalist id="ollama-models-list-onboarding">
+                      {availableOllamaModels.map((model) => (
+                        <option key={model} value={model} />
+                      ))}
+                    </datalist>
+                    {availableOllamaModels.length > 0 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
+                        <svg className="w-3 h-3 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-emerald-400/80 mt-1">
+                    {availableOllamaModels.length > 0
+                      ? `${availableOllamaModels.length} models found.`
+                      : `Must be pulled first: ollama pull ${ollamaModel || 'llama3'}`}
+                  </p>
+                </div>
+              </div>
+            )}
+            {!useOllama && (
+              <p className={`text-xs ${theme.text.tertiary}`}>
+                Run entirely locally. Requires [Ollama](https://ollama.com) installed.
+              </p>
+            )}
+          </div>
         </div>
-        <div className="relative">
-          <input
-            type={showGeminiKey ? 'text' : 'password'}
-            value={geminiKey}
-            onChange={(e) => setGeminiKey(e.target.value)}
-            placeholder="AIza..."
-            className={`w-full bg-black/40 rounded-lg px-4 py-2.5 pr-16 text-white placeholder-white/40 border ${
-              geminiKey.trim() ? 'border-green-500/40' : 'border-amber-500/40'
-            } focus:border-white/50 focus:outline-none transition-colors font-mono text-xs`}
-          />
-          <button
-            type="button"
-            onClick={() => setShowGeminiKey(!showGeminiKey)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white text-xs"
-          >
-            {showGeminiKey ? 'Hide' : 'Show'}
-          </button>
-        </div>
-        
-        {!geminiKey.trim() && (
-          <p className={`text-xs text-amber-400 mt-2 flex items-center gap-1`}>
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-            </svg>
-            Required for AI formatting and commands
-          </p>
-        )}
       </div>
 
       {/* Save button */}
@@ -297,9 +535,9 @@ const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeys
       {/* Status summary */}
       <div className="mt-4 text-center">
         <p className={`text-xs ${theme.text.tertiary}`}>
-          {useLocalWhisper ? '🖥️ Local Whisper' : '☁️ Deepgram Cloud'} 
+          {useLocalWhisper ? '🖥️ Local Whisper' : '☁️ Deepgram Cloud'}
           {' + '}
-          {geminiKey.trim() ? '✅ Gemini AI' : '⚠️ No AI key yet'}
+          {useOllama ? `🦙 Local Ollama (${ollamaModel})` : (geminiKey.trim() ? '✅ Gemini AI' : '⚠️ No AI (Dictation Only)')}
         </p>
       </div>
     </div>

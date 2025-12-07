@@ -20,7 +20,7 @@ export class SettingsIPCHandlers {
   private startHotkeyCallback: HotkeyCallback | null = null;
   private handlersRegistered = false;
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): SettingsIPCHandlers {
     if (!SettingsIPCHandlers.instance) {
@@ -65,9 +65,9 @@ export class SettingsIPCHandlers {
       try {
         Logger.info('[SettingsIPC] Received app:update-settings:', JSON.stringify(settings));
         const previousSettings = appSettings.getSettings();
-        
+
         appSettings.updateSettings(settings);
-        
+
         // Log if local whisper settings changed
         if (settings.useLocalWhisper !== undefined) {
           Logger.info(`[SettingsIPC] Local Whisper setting changed to: ${settings.useLocalWhisper}`);
@@ -85,27 +85,27 @@ export class SettingsIPCHandlers {
         if (settings.localWhisperModel !== undefined) {
           Logger.info(`[SettingsIPC] Local Whisper model changed to: ${settings.localWhisperModel}`);
         }
-        
+
         // If hotkey setting changed, restart monitoring
         if (settings.hotkey !== undefined && settings.hotkey !== previousSettings.hotkey) {
           Logger.info(`[SettingsIPC] Hotkey changed to ${settings.hotkey}, restarting monitoring...`);
           this.restartHotkeyMonitoring();
         }
-        
+
         // If audioFeedback setting changed, update waveform and restart
         if (settings.audioFeedback !== undefined && settings.audioFeedback !== previousSettings.audioFeedback) {
           Logger.info(`[SettingsIPC] Audio feedback changed to ${settings.audioFeedback}`);
           this.waveformWindow?.webContents.send('audio-feedback-setting', settings.audioFeedback);
           this.restartHotkeyMonitoring();
         }
-        
+
         // Handle showWaveform changes - hide waveform window immediately when disabled
         if (settings.showWaveform !== undefined && !settings.showWaveform) {
           if (this.waveformWindow && !this.waveformWindow.isDestroyed()) {
             this.waveformWindow.hide();
           }
         }
-        
+
         return true;
       } catch (error) {
         Logger.error('[SettingsIPC] Failed to update app settings:', error);
@@ -123,9 +123,9 @@ export class SettingsIPCHandlers {
       try {
         Logger.info('[SettingsIPC] Received settings update:', updates);
         const previousSettings = appSettings.getSettings();
-        
+
         appSettings.updateSettings(updates);
-        
+
         // Handle streaming mode changes
         if ('useDeepgramStreaming' in updates) {
           const currentSettings = appSettings.getSettings();
@@ -136,7 +136,7 @@ export class SettingsIPCHandlers {
             Logger.info(`[SettingsIPC] Streaming mode updated - Deepgram: ${currentSettings.useDeepgramStreaming}, LocalWhisper: ${currentSettings.useLocalWhisper}, Streaming: ${shouldStream}`);
           }
         }
-        
+
         // Handle local whisper changes - affects streaming mode
         if ('useLocalWhisper' in updates) {
           const currentSettings = appSettings.getSettings();
@@ -147,20 +147,20 @@ export class SettingsIPCHandlers {
             Logger.info(`[SettingsIPC] Local Whisper changed - Streaming mode: ${shouldStream}`);
           }
         }
-        
+
         // If hotkey changed, restart monitoring
         if (updates.hotkey && updates.hotkey !== previousSettings.hotkey) {
           Logger.info(`[SettingsIPC] Hotkey changed to ${updates.hotkey} - restarting monitoring`);
           this.restartHotkeyMonitoring(250);
         }
-        
+
         // Handle showWaveform changes - hide waveform window immediately when disabled
         if ('showWaveform' in updates && !updates.showWaveform) {
           if (this.waveformWindow && !this.waveformWindow.isDestroyed()) {
             this.waveformWindow.hide();
           }
         }
-        
+
         Logger.success('[SettingsIPC] Settings updated successfully');
         return true;
       } catch (error) {
@@ -199,11 +199,34 @@ export class SettingsIPCHandlers {
       }
     });
 
+    // Verify Ollama connection and get models
+    ipcMain.handle('ollama:get-models', async (_, url) => {
+      try {
+        const fetch = (await import('node-fetch')).default;
+        // Ensure URL is valid and has no trailing slash
+        const baseUrl = url.replace(/\/$/, '');
+        const response = await fetch(`${baseUrl}/api/tags`);
+
+        if (!response.ok) {
+          throw new Error(`Ollama API error: ${response.status}`);
+        }
+
+        const data = await response.json() as { models: Array<{ name: string }> };
+        return {
+          success: true,
+          models: data.models.map(m => m.name)
+        };
+      } catch (error) {
+        Logger.error('[SettingsIPC] Failed to fetch Ollama models:', error);
+        return { success: false, error: (error as Error).message };
+      }
+    });
+
     // Save API keys
-    ipcMain.handle('api-keys:save', async (_, keys: { 
-      openaiApiKey?: string; 
-      deepgramApiKey?: string; 
-      anthropicApiKey?: string; 
+    ipcMain.handle('api-keys:save', async (_, keys: {
+      openaiApiKey?: string;
+      deepgramApiKey?: string;
+      anthropicApiKey?: string;
       geminiApiKey?: string;
       awsAccessKeyId?: string;
       awsSecretAccessKey?: string;
@@ -211,7 +234,7 @@ export class SettingsIPCHandlers {
     }) => {
       try {
         Logger.info('[SettingsIPC] Saving API keys...');
-        
+
         const updates: Record<string, string | undefined> = {};
         if (keys.openaiApiKey !== undefined) updates.openaiApiKey = keys.openaiApiKey;
         if (keys.deepgramApiKey !== undefined) updates.deepgramApiKey = keys.deepgramApiKey;
@@ -220,13 +243,13 @@ export class SettingsIPCHandlers {
         if (keys.awsAccessKeyId !== undefined) updates.awsAccessKeyId = keys.awsAccessKeyId;
         if (keys.awsSecretAccessKey !== undefined) updates.awsSecretAccessKey = keys.awsSecretAccessKey;
         if (keys.awsRegion !== undefined) updates.awsRegion = keys.awsRegion;
-        
+
         appSettings.updateSettings(updates);
-        
+
         // Clear API cache so new keys are used
         const { SecureAPIService } = await import('../services/secure-api-service');
         SecureAPIService.getInstance().clearCache();
-        
+
         Logger.success('[SettingsIPC] API keys saved successfully');
         return true;
       } catch (error) {
@@ -240,11 +263,11 @@ export class SettingsIPCHandlers {
       try {
         Logger.info(`[SettingsIPC] Setting streaming mode to: ${enabled}`);
         appSettings.updateSettings({ useDeepgramStreaming: enabled });
-        
+
         if (this.pushToTalkService) {
           this.pushToTalkService.setStreamingMode(enabled);
         }
-        
+
         return { success: true };
       } catch (error) {
         Logger.error('[SettingsIPC] Failed to set streaming mode:', error);
@@ -284,12 +307,12 @@ export class SettingsIPCHandlers {
       try {
         const { LocalWhisperTranscriber } = await import('../transcription/local-whisper-transcriber');
         const transcriber = new LocalWhisperTranscriber();
-        
+
         // Send progress updates to renderer
         const result = await transcriber.downloadModel(modelId, (percent, downloadedMB, totalMB) => {
           event.sender.send('whisper:download-progress', { modelId, percent, downloadedMB, totalMB });
         });
-        
+
         return { success: result };
       } catch (error) {
         Logger.error('[SettingsIPC] Failed to download model:', error);
@@ -305,7 +328,7 @@ export class SettingsIPCHandlers {
     if (this.stopHotkeyCallback) {
       this.stopHotkeyCallback();
     }
-    
+
     if (this.startHotkeyCallback) {
       setTimeout(() => {
         this.startHotkeyCallback?.();

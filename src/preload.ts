@@ -44,7 +44,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       callback(event, isPressed);
     });
   },
-  
+
   // Push-to-talk state handlers for tutorial screens
   onPushToTalkStateChange: (callback: (isActive: boolean) => void) => {
     console.log('🎯 [Preload] Setting up onPushToTalkStateChange listener');
@@ -53,7 +53,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       callback(isActive);
     });
   },
-  
+
   onTranscriptionStateChange: (callback: (isTranscribing: boolean) => void) => {
     console.log('🎯 [Preload] Setting up onTranscriptionStateChange listener');
     ipcRenderer.on('transcription-state-change', (_event, isTranscribing) => {
@@ -61,10 +61,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
       callback(isTranscribing);
     });
   },
-  
+
   // User authentication
   logout: () => ipcRenderer.invoke('logout'),
-  
+
   // Auth state persistence
   saveAuthState: (authState: any) => ipcRenderer.invoke('save-auth-state', authState),
   loadAuthState: () => ipcRenderer.invoke('load-auth-state'),
@@ -76,7 +76,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   requestAccessibilityPermission: () => ipcRenderer.invoke('request-accessibility-permission'),
   requestNotificationPermission: () => ipcRenderer.invoke('request-notification-permission'),
   checkPermissionStatus: (permission: string) => ipcRenderer.invoke('check-permission-status', permission),
-  
+
   // Permission monitoring
   startPermissionMonitoring: () => ipcRenderer.send('start-permission-monitoring'),
   stopPermissionMonitoring: () => ipcRenderer.send('stop-permission-monitoring'),
@@ -91,7 +91,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Testing methods
   getLogFilePath: () => ipcRenderer.invoke('get-log-file-path'),
-  
+
   // Nudge service methods
   nudgeRecordTyping: () => ipcRenderer.invoke('nudge:record-typing'),
   nudgeRecordJarvisUsage: () => ipcRenderer.invoke('nudge:record-jarvis-usage'),
@@ -101,7 +101,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   nudgeClose: () => ipcRenderer.invoke('nudge:close'),
   nudgeEnableGlobalTyping: () => ipcRenderer.invoke('nudge:enable-global-typing'),
   nudgeResetDaily: () => ipcRenderer.invoke('nudge:reset-daily'),
-  
+
   // Nudge settings methods
   nudgeGetSettings: () => ipcRenderer.invoke('nudge:get-settings'),
   nudgeUpdateSettings: (settings: any) => {
@@ -112,7 +112,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     }
     return ipcRenderer.invoke('nudge:update-settings', settings);
   },
-  
+
   // App settings methods
   appGetSettings: () => ipcRenderer.invoke('app:get-settings'),
   getUserSettings: () => ipcRenderer.invoke('app:get-settings'), // Alias for getUserSettings
@@ -121,20 +121,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getCurrentSettings: () => ipcRenderer.invoke('app-settings:get'),
   appGetAutoLaunchStatus: () => ipcRenderer.invoke('app-settings:get-auto-launch-status'),
   appSyncAutoLaunch: () => ipcRenderer.invoke('app-settings:sync-auto-launch'),
-  
+
+  // Ollama
+  ollamaGetModels: (url: string) => ipcRenderer.invoke('ollama:get-models', url),
+
   // API Key methods (stored locally, never uploaded)
   getApiKeys: () => ipcRenderer.invoke('api-keys:get'),
-  saveApiKeys: (keys: { 
-    openaiApiKey?: string; 
-    deepgramApiKey?: string; 
-    anthropicApiKey?: string; 
+  saveApiKeys: (keys: {
+    openaiApiKey?: string;
+    deepgramApiKey?: string;
+    anthropicApiKey?: string;
     geminiApiKey?: string;
     awsAccessKeyId?: string;
     awsSecretAccessKey?: string;
     awsRegion?: string;
-  }) => 
+  }) =>
     ipcRenderer.invoke('api-keys:save', keys),
-  
+
   // Whisper model management
   whisperGetDownloadedModels: () => ipcRenderer.invoke('whisper:get-downloaded-models'),
   whisperIsModelDownloaded: (modelId: string) => ipcRenderer.invoke('whisper:is-model-downloaded', modelId),
@@ -145,10 +148,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   removeWhisperDownloadProgressListener: () => {
     ipcRenderer.removeAllListeners('whisper:download-progress');
   },
-  
+
   // Sound playback methods
   playSound: (soundType: string) => ipcRenderer.invoke('play-sound', soundType),
-  
+
   // Shell methods for opening URLs
   shell: {
     openExternal: (url: string) => ipcRenderer.invoke('shell-open-external', url)
