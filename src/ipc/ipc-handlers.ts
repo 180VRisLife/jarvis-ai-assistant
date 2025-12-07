@@ -186,10 +186,6 @@ export class IPCHandlers {
         return false;
       }
     });
-
-    safeRegisterHandler('get-app-version', () => {
-      return app.getVersion();
-    });
   }
   
   setAnalyticsManager(manager: OptimizedAnalyticsManager): void {
