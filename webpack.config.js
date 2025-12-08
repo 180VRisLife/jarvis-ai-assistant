@@ -263,7 +263,9 @@ module.exports = [
       '@xenova/transformers': 'commonjs @xenova/transformers',
       'onnxruntime-node': 'commonjs onnxruntime-node',
       'sharp': 'commonjs sharp',
-      'whisper-node-addon': 'commonjs whisper-node-addon'
+      'whisper-node-addon': 'commonjs whisper-node-addon',
+      'bufferutil': 'commonjs bufferutil',
+      'utf-8-validate': 'commonjs utf-8-validate'
     },
     node: {
       __dirname: false,

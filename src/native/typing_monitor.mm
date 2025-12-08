@@ -277,7 +277,7 @@ Napi::Value FastPasteText(const Napi::CallbackInfo& info) {
         }
         
         // Ensure clipboard is ready
-        usleep(50000); // 50ms to ensure clipboard is ready
+        usleep(200000); // 200ms to ensure clipboard is ready
         
         // Verify clipboard was set correctly (only for our text, not original)
         NSArray *verifyContents = [pasteboard readObjectsForClasses:originalClasses options:originalOptions];
@@ -294,7 +294,7 @@ Napi::Value FastPasteText(const Napi::CallbackInfo& info) {
         
         // Post events
         CGEventPost(kCGSessionEventTap, keyDownEvent);
-        usleep(5000); // 5ms between key events
+        usleep(50000); // 50ms between key events
         CGEventPost(kCGSessionEventTap, keyUpEvent);
         
         // Clean up events
@@ -304,14 +304,14 @@ Napi::Value FastPasteText(const Napi::CallbackInfo& info) {
         NSLog(@"[FastPaste] Paste operation completed");
         
         // SECURITY: Restore original clipboard after paste (content never logged/transmitted)
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             if (originalContents.count > 0) {
                 [pasteboard clearContents];
                 [pasteboard setString:originalContents[0] forType:NSPasteboardTypeString];
-                NSLog(@"[FastPaste] Clipboard restored after 1 second");
+                NSLog(@"[FastPaste] Clipboard restored after 1.5 seconds");
             } else {
                 [pasteboard clearContents];
-                NSLog(@"[FastPaste] Clipboard cleared after 1 second (was empty)");
+                NSLog(@"[FastPaste] Clipboard cleared after 1.5 seconds (was empty)");
             }
         });
         

@@ -47,7 +47,6 @@ export class UserNudgeService {
   private saveActivity(): void {
     this.storage.saveActivity(this.activity);
   }
-  }
 
   /**
    * Start monitoring for typing activity using native approach

@@ -497,7 +497,7 @@ async function activateOverlaysAndShortcuts() {
     const waveformWindow = getWaveformWindow();
     if (waveformWindow && currentSettings.showWaveform !== false) {
       Logger.info('◉ [Overlays] Showing waveform window...');
-      waveformWindow.show();
+      waveformWindow.showInactive();
     } else if (waveformWindow) {
       Logger.info('◉ [Overlays] Waveform window hidden per user settings');
     }

@@ -80,6 +80,7 @@ export class WindowManager {
       transparent: true,
       resizable: false,
       movable: true,
+      focusable: false,
       show: false,
       skipTaskbar: true,
       hasShadow: false,
