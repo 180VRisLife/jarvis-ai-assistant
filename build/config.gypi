@@ -425,7 +425,7 @@
     "want_separate_host_toolset": 0,
     "xcode_version": "16.0",
     "nodedir": "/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2",
-    "python": "/Users/akshayaggarwal/.local/share/mise/installs/python/3.11.11/bin/python3",
+    "python": "/Users/akshayaggarwal/.local/share/mise/installs/python/3.12.12/bin/python3",
     "standalone_static_library": 1,
     "global_prefix": "/Users/akshayaggarwal/.nvm/versions/node/v20.19.2",
     "local_prefix": "/Users/akshayaggarwal/VSCode/jarvis-ai-assistant-test",

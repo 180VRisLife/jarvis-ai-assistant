@@ -52,7 +52,7 @@ export class AppSettingsService {
 
   private getDefaultSettings(): AppSettings {
     return {
-      audioFeedback: true,
+      audioFeedback: false,
       showOnStartup: false,
       analytics: true,
       hotkey: 'fn',

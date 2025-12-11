@@ -32,7 +32,7 @@ const Settings: React.FC = () => {
   // Settings state
   const [showNudges, setShowNudges] = useState(true);
   const [hotkey, setHotkey] = useState('fn');
-  const [audioFeedback, setAudioFeedback] = useState(true);
+  const [audioFeedback, setAudioFeedback] = useState(false);
   const [showOnStartup, setShowOnStartup] = useState(false);
   const [aiPostProcessing, setAiPostProcessing] = useState(true);
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
@@ -1357,7 +1357,7 @@ const Settings: React.FC = () => {
               >
                 {isSaving ? (
                   <>
-                                       <div className="w-4 h-4 border-2 border-white/30 border-t-transparent rounded-full animate-spin mr-2"></div>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-transparent rounded-full animate-spin mr-2"></div>
                     Saving...
                   </>
                 ) : (

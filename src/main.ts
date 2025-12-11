@@ -913,7 +913,7 @@ async function handleHotkeyDown() {
   if (waveformWindow && !waveformWindow.isDestroyed()) {
     // Only show waveform if setting allows it
     if (shouldShowWaveform) {
-      waveformWindow.show();
+      waveformWindow.showInactive();
     }
 
     // Send to waveform window first (primary UI) - even if hidden, for audio feedback
@@ -1129,7 +1129,7 @@ async function handleHotkeyDown() {
     // Show waveform if setting allows
     const singleTapSettings = AppSettingsService.getInstance().getSettings();
     if (singleTapSettings.showWaveform !== false && waveformWindow && !waveformWindow.isDestroyed()) {
-      waveformWindow.show();
+      waveformWindow.showInactive();
     }
     waveformWindow?.webContents.send('push-to-talk-start');
 
