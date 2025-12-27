@@ -16,7 +16,7 @@ class KeyboardViewController: UIInputViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        print("[Keyboard] VERSION: 2.0 (Pulse UI + Late Transcript Fix)")
+        print("[Keyboard] VERSION: 2.1 (DEBUG) (Pulse UI + Late Transcript Fix)")
         
         setupServices()
         setupUI()

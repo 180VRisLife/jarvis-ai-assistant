@@ -10,7 +10,7 @@ A custom iOS keyboard that lets you speak naturally and inserts clean, formatted
 
 ## Features
 
-- 🎤 **Tap to speak** — Real-time transcription with Deepgram
+- 🎤 **Tap to speak** — Real-time transcription with Deepgram (defaults to `mip_opt_out=true`)
 - ✨ **AI formatting** — Gemini 2.5 Flash cleans up grammar, punctuation, filler words
 - 📝 **Prompt Editor** — View and customize the AI's system prompt on the fly
 - 🔒 **Privacy-first** — Your API keys stay on your device

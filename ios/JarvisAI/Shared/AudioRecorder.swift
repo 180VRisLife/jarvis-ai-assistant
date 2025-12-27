@@ -1,45 +1,52 @@
 import AVFoundation
-import CoreMedia
 import Combine
+import Foundation
 
-class AudioRecorder: NSObject, ObservableObject, AVCaptureAudioDataOutputSampleBufferDelegate {
-    private var captureSession: AVCaptureSession?
-    private var audioOutput: AVCaptureAudioDataOutput?
-    
+class AudioRecorder: NSObject, ObservableObject {
+    private var audioEngine: AVAudioEngine?
+    private var inputNode: AVAudioInputNode?
+    private var audioConverter: AVAudioConverter?
+
     @Published var isRecording = false
     @Published var isProcessing = false
     @Published var permissionDenied = false
-    
+
     // Callback for audio data
     var onAudioData: ((Data) -> Void)?
     var onError: ((String) -> Void)?
-    
-    // Queue for processing audio sample buffers
-    private let audioQueue = DispatchQueue(label: "com.jarvis.audioQueue")
-    
+
     override init() {
         super.init()
     }
-    
+
     private func setupAudioSession() {
         do {
             let session = AVAudioSession.sharedInstance()
-            // Keep the robust category
-            try session.setCategory(.playAndRecord, mode: .default, options: [.duckOthers, .allowBluetooth, .defaultToSpeaker])
+            try session.setCategory(
+                .playAndRecord, mode: .measurement, options: [.duckOthers, .defaultToSpeaker])
+            try session.setPreferredSampleRate(16000.0)
             try session.setActive(true, options: .notifyOthersOnDeactivation)
-            print("[AudioRecorder] Audio session setup successful")
+            print(
+                "[AudioRecorder] Audio session setup successful. Preferred: 16000, Actual: \(session.sampleRate)"
+            )
         } catch {
             print("[AudioRecorder] Failed to setup audio session: \(error)")
             onError?("Audio session failed: \(error.localizedDescription)")
         }
     }
-    
+
     func requestPermissionAndRecord() {
-        switch AVCaptureDevice.authorizationStatus(for: .audio) {
-        case .authorized:
+        print("[AudioRecorder] Requesting microphone permission...")
+
+        // Check iOS 17 deprecated lookup if possible, but standard check is fine
+        switch AVAudioSession.sharedInstance().recordPermission {
+        case .granted:
             startRecordingInternal()
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .audio) { [weak self] granted in
+        case .denied:
+            permissionDenied = true
+            onError?("Microphone access denied. Enable in Settings.")
+        case .undetermined:
+            AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
                 DispatchQueue.main.async {
                     if granted {
                         self?.startRecordingInternal()
@@ -49,117 +56,140 @@ class AudioRecorder: NSObject, ObservableObject, AVCaptureAudioDataOutputSampleB
                     }
                 }
             }
-        case .denied, .restricted:
-            permissionDenied = true
-            onError?("Microphone access denied. Enable in Settings.")
         @unknown default:
-            onError?("Unknown permission state")
+            break
         }
     }
-    
+
     func startRecording() {
-        startRecordingInternal()
+        requestPermissionAndRecord()
     }
-    
+
     private func startRecordingInternal() {
-        print("[AudioRecorder] Starting recording (AVCaptureSession)...")
+        print("[AudioRecorder] Starting recording (AVAudioEngine)...")
+
         setupAudioSession()
-        
-        audioQueue.async { [weak self] in
+
+        // Tear down existing
+        if audioEngine?.isRunning == true {
+            audioEngine?.stop()
+        }
+
+        // Create new engine
+        audioEngine = AVAudioEngine()
+        guard let audioEngine = audioEngine else { return }
+
+        inputNode = audioEngine.inputNode
+
+        // Get hardware format
+        let inputFormat = inputNode!.outputFormat(forBus: 0)
+
+        // Define target format: 16kHz, 1 channel, PCM Int16
+        // Deepgram prefers this format.
+        guard
+            let recordingFormat = AVAudioFormat(
+                commonFormat: .pcmFormatInt16, sampleRate: 16000, channels: 1, interleaved: false)
+        else {
+            print("[AudioRecorder] Failed to create audio format")
+            return
+        }
+
+        // Setup Converter
+        audioConverter = AVAudioConverter(from: inputFormat, to: recordingFormat)
+
+        // Install Tap
+        // Buffer size is a hint. 1024 frames @ 44.1k is ~23ms.
+        inputNode!.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) {
+            [weak self] (buffer, time) in
             guard let self = self else { return }
-            
-            do {
-                self.captureSession = AVCaptureSession()
-                self.captureSession?.beginConfiguration()
-                
-                // Add Input
-                guard let microphone = AVCaptureDevice.default(for: .audio) else {
-                    throw NSError(domain: "AudioRecorder", code: 1, userInfo: [NSLocalizedDescriptionKey: "No microphone available"])
-                }
-                
-                let input = try AVCaptureDeviceInput(device: microphone)
-                if self.captureSession?.canAddInput(input) == true {
-                    self.captureSession?.addInput(input)
-                } else {
-                     throw NSError(domain: "AudioRecorder", code: 2, userInfo: [NSLocalizedDescriptionKey: "Cannot add mic input"])
-                }
-                
-                // Add Output
-                self.audioOutput = AVCaptureAudioDataOutput()
-                self.audioOutput?.setSampleBufferDelegate(self, queue: self.audioQueue)
-                
-                if self.captureSession?.canAddOutput(self.audioOutput!) == true {
-                    self.captureSession?.addOutput(self.audioOutput!)
-                } else {
-                     throw NSError(domain: "AudioRecorder", code: 3, userInfo: [NSLocalizedDescriptionKey: "Cannot add audio output"])
-                }
-                
-                self.captureSession?.commitConfiguration()
-                self.captureSession?.startRunning()
-                
-                DispatchQueue.main.async {
-                    self.isRecording = true
-                    print("[AudioRecorder] Started AVCaptureSession successfully")
-                }
-                
-            } catch {
-                print("[AudioRecorder] Failed to start capture session: \(error)")
-                DispatchQueue.main.async {
-                    self.onError?("Capture Failed: \(error.localizedDescription)")
-                    self.cleanupSession()
-                }
+            self.processAudioBuffer(buffer)
+        }
+
+        do {
+            try audioEngine.start()
+            DispatchQueue.main.async {
+                self.isRecording = true
+                print("[AudioRecorder] Started AVAudioEngine successfully")
+            }
+        } catch {
+            print("[AudioRecorder] Audio Engine failed to start: \(error)")
+            // Reset state on failure
+            cleanupEngine()
+            DispatchQueue.main.async {
+                self.onError?("Engine Start Error: \(error.localizedDescription)")
             }
         }
     }
-    
+
     func stopRecording(completion: @escaping (Data?) -> Void) {
         print("[AudioRecorder] Stopping recording...")
-        
-        audioQueue.async { [weak self] in
-            guard let self = self else { return }
-            
-            self.captureSession?.stopRunning()
-            self.cleanupSession()
-            
-            DispatchQueue.main.async {
-                self.isRecording = false
-                // Return accumulated data
-                let data = self.accumulatedData
-                self.accumulatedData = Data() // Reset
-                completion(data)
-            }
+
+        cleanupEngine()
+
+        DispatchQueue.main.async {
+            self.isRecording = false
+            // Return accumulated data
+            let data = self.accumulatedData
+            self.accumulatedData = Data()  // Reset
+            completion(data)
         }
     }
-    
-    private func cleanupSession() {
-        captureSession = nil
-        audioOutput = nil
+
+    private func cleanupEngine() {
+        audioEngine?.stop()
+        inputNode?.removeTap(onBus: 0)
+        audioEngine = nil
+        inputNode = nil
+        audioConverter = nil
     }
-    
+
     private var accumulatedData = Data()
-    
-    // MARK: - AVCaptureAudioDataOutputSampleBufferDelegate
-    
-    func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
-        guard isRecording else { return }
-        
-        // Extract data from CMSampleBuffer
-        guard let blockBuffer = CMSampleBufferGetDataBuffer(sampleBuffer) else { return }
-        
-        var lengthAtOffset: Int = 0
-        var totalLength: Int = 0
-        var dataPtr: UnsafeMutablePointer<Int8>? = nil
-        
-        let status = CMBlockBufferGetDataPointer(blockBuffer, atOffset: 0, lengthAtOffsetOut: &lengthAtOffset, totalLengthOut: &totalLength, dataPointerOut: &dataPtr)
-        
-        if status == kCMBlockBufferNoErr, let dataPtr = dataPtr {
-            let data = Data(bytes: dataPtr, count: totalLength)
-            
-            // Append and Callback
-             DispatchQueue.main.async { [weak self] in
-                 self?.accumulatedData.append(data)
-                 self?.onAudioData?(data)
-             }
+    private var processCount = 0
+
+    private func processAudioBuffer(_ buffer: AVAudioPCMBuffer) {
+        guard let converter = audioConverter else { return }
+
+        // Calculate output buffer size
+        // input frames * (outputRate / inputRate)
+        let ratio = converter.outputFormat.sampleRate / converter.inputFormat.sampleRate
+        let capacity = UInt32(Double(buffer.frameCapacity) * ratio)
+
+        guard
+            let outputBuffer = AVAudioPCMBuffer(
+                pcmFormat: converter.outputFormat, frameCapacity: capacity)
+        else { return }
+
+        var error: NSError? = nil
+
+        // Input block for converter
+        let inputBlock: AVAudioConverterInputBlock = { inNumPackets, outStatus in
+            outStatus.pointee = .haveData
+            return buffer
+        }
+
+        converter.convert(to: outputBuffer, error: &error, withInputFrom: inputBlock)
+
+        if let error = error {
+            print("Audio conversion error: \(error)")
+            return
+        }
+
+        // Convert to Data
+        let audioData = Data(buffer: outputBuffer)
+
+        // DEBUG LOGGING
+        processCount += 1
+        if processCount % 50 == 0 {
+            print(
+                "[AudioRecorder] Generated \(audioData.count) bytes (Total chunks: \(processCount))"
+            )
+        }
+
+        // Call callback
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.accumulatedData.append(audioData)
+            self.onAudioData?(audioData)
         }
     }
 }

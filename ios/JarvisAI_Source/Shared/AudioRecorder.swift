@@ -147,18 +147,29 @@ class AudioRecorder: NSObject, ObservableObject {
         
         // Convert to Data
         let audioData = Data(buffer: outputBuffer)
+        let dataCount = audioData.count
         
-        // Log every 10th buffer to avoid spam, but prove it's working
-        if Int.random(in: 0...20) == 0 {
-            print("[AudioRecorder] Generated \(audioData.count) bytes")
+        // Log every 50th buffer for heartbeat
+        processCount += 1
+        if processCount % 50 == 0 {
+            print("[AudioRecorder] Generated \(dataCount) bytes (Total processed: \(processCount) chunks)")
         }
 
         // Append to accumulator
         accumulatedData.append(audioData)
         
         // Also call callback for streaming (if we had it)
-        onAudioData?(audioData)
+        if let onAudioData = onAudioData {
+            onAudioData(audioData)
+        } else {
+            // Warn only once or periodically if callback is missing while recording
+            if processCount % 100 == 0 {
+                 print("[AudioRecorder] WARNING: onAudioData closure is nil - audio data is being generated but not sent anywhere!")
+            }
+        }
     }
+    
+    private var processCount = 0
 }
 
 extension Data {
