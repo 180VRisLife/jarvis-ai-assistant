@@ -5,6 +5,7 @@ import WebSocket from 'ws';
 interface DeepgramStreamingConfig {
   model?: string;
   language?: string;
+  mip_opt_out?: boolean;
   smart_format?: boolean;
   punctuate?: boolean;
   capitalization?: boolean;
@@ -58,6 +59,7 @@ export class DeepgramStreamingTranscriber extends EventEmitter {
     this.config = {
       model: 'nova-3',
       language: 'en-US',
+      mip_opt_out: true,
       smart_format: true,
       punctuate: true,
       capitalization: true,

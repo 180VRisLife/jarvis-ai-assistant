@@ -43,7 +43,7 @@ This is what open source is supposed to be.
 - Tiny actions already work ("open YouTube", "set 5-min timer")
 - **Fully offline** with local Whisper (tiny/base/small)
 - **100% Private, Blazingly Fast** support for local LLMs via [Ollama](https://ollama.com)
-- Or use cloud speed with Deepgram + Gemini (1M tokens/day free)
+- Or use cloud speed with Deepgram + Gemini (1M tokens/day free) — Deepgram requests default to `mip_opt_out=true`
 
 **Zero tracking. Zero telemetry. Zero bullshit.**
 

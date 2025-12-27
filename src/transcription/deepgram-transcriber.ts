@@ -30,6 +30,9 @@ export class DeepgramTranscriber {
       // Configure for Linear16 PCM format (raw PCM data at 16kHz)
       // Enhanced parameters for whisper-level audio detection
       let url = 'https://api.deepgram.com/v1/listen?smart_format=true&punctuate=true&capitalization=true&model=nova-3&language=en-US&detect_language=false&encoding=linear16&sample_rate=16000';
+
+      // Opt out of Deepgram Model Improvement Program (prevents storage beyond request processing)
+      url += '&mip_opt_out=true';
       
       // Add enhanced parameters for low-volume whisper detection
       url += '&vad_events=true';  // Voice Activity Detection for better silence handling
