@@ -3,7 +3,7 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import { Logger } from '../core/logger';
 import { GoogleGenAI } from '@google/genai';
-import { createDictationPrompt, createAssistantPrompt } from '../prompts/prompts';
+import { createDictationPrompt, createAssistantPrompt } from '../prompts/prompt-manager';
 import { SecureAPIService } from '../services/secure-api-service';
 
 export interface GPT4oTranscribeResult {

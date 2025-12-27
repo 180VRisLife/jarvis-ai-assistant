@@ -41,6 +41,7 @@ This is what open source is supposed to be.
 - Removes "um", "like", all fillers automatically
 - Fixes grammar, can rephrase, bullet-point, or even generate text
 - Tiny actions already work ("open YouTube", "set 5-min timer")
+- **Full Prompt Engineering:** Every behavior is customizable. Tweak how Jarvis formats mail, cleans dictation, or behaves as an assistant.
 - **Fully offline** with local Whisper (tiny/base/small)
 - **100% Private, Blazingly Fast** support for local LLMs via [Ollama](https://ollama.com)
 - Or use cloud speed with Deepgram + Gemini (1M tokens/day free) — Deepgram requests default to `mip_opt_out=true`
@@ -133,7 +134,7 @@ Requires Node.js 18+, macOS 10.13+, Xcode CLI tools.
 - [x] Proper "local-only" onboarding (no fake keys needed)
 - [x] AWS Bedrock support
 - [x] Ollama support
-- [ ] Custom voice commands & prompts
+- [x] Custom voice commands & prompts
 - [ ] Windows version
 - [ ] Clipboard magic & multi-step actions
 - [ ] iOS (yes, I dream big)

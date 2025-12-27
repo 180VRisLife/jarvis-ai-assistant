@@ -9,7 +9,8 @@ import { fileSystemTool } from "../tools/filesystem-tool";
 import { fileOrganizerTool } from "../tools/file-organizer-tool";
 import { systemInfoTool } from "../tools/system-info-tool";
 import { SystemMessage, HumanMessage } from "@langchain/core/messages";
-import { assistantPrompt, codeAssistantPrompt } from "../prompts/prompts";
+import { getAssistantPrompt } from "../prompts/prompt-manager";
+import { codeAssistantPrompt } from "../prompts/prompts";
 import { Logger } from "../core/logger";
 import { appLauncherService } from "../services/app-launcher-service";
 import { smartBrowserService } from "../services/smart-browser-service";
@@ -50,7 +51,7 @@ export class JarvisAgent {
       ],
       messageModifier: async (messages) => {
         // Simplified prompt for faster processing
-        const systemPrompt = `${assistantPrompt}
+        const systemPrompt = `${getAssistantPrompt()}
 
 Available Tools (use sparingly):
 - textResponseTool: Text generation, conversations, writing
@@ -170,7 +171,7 @@ SPEED PRIORITY: Prefer textResponseTool for most queries unless specific tool fu
     startTime?: number
   ): Promise<string> {
     // Simple contextual prompt with user info if available
-    let contextualPrompt = assistantPrompt;
+    let contextualPrompt = getAssistantPrompt();
     if (userContext?.displayName || userContext?.email) {
       contextualPrompt += `\n\nUser Context:`;
       if (userContext.displayName) contextualPrompt += `\n- Name: ${userContext.displayName}`;

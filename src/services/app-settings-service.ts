@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { defaultDictationPrompt, defaultEmailFormattingPrompt, defaultAssistantPrompt } from '../prompts/prompts';
 
 interface AppSettings {
   audioFeedback: boolean;
@@ -28,6 +29,10 @@ interface AppSettings {
   useOllama?: boolean;
   ollamaUrl?: string;
   ollamaModel?: string;
+  // Custom Prompts
+  customDictationPrompt?: string;
+  customEmailPrompt?: string;
+  customAssistantPrompt?: string;
 }
 
 /**
@@ -64,7 +69,10 @@ export class AppSettingsService {
       showWaveform: true, // Show waveform by default
       useOllama: false,
       ollamaUrl: 'http://localhost:11434',
-      ollamaModel: 'llama3'
+      ollamaModel: 'llama3',
+      customDictationPrompt: defaultDictationPrompt,
+      customEmailPrompt: defaultEmailFormattingPrompt,
+      customAssistantPrompt: defaultAssistantPrompt
     };
   }
 

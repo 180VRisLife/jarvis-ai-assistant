@@ -1,5 +1,3 @@
-import { Logger } from '../core/logger';
-
 // =======================================================================================
 // OPTIMIZED PROMPT SYSTEM - HIERARCHICAL RULE STRUCTURE
 // =======================================================================================
@@ -13,7 +11,7 @@ import { Logger } from '../core/logger';
 // =======================================================================================
 // CORE DICTATION PROMPT - MINIMAL AND FOCUSED
 // =======================================================================================
-export const dictationPrompt = `Transform spoken words into clean, typed text.
+export const defaultDictationPrompt = `Transform spoken words into clean, typed text.
 
 CRITICAL PRESERVATION RULES (NEVER VIOLATE):
 • Output ONLY what was spoken - NEVER add content
@@ -36,12 +34,15 @@ EXAMPLES:
 "um send the report to there office please" → "Send the report to their office please."
 "meet me at 4PM till 3PM on friday best john" → "Meet me at 3PM on Friday. Best, John."
 "open readme dot md file" → "Open readme.md file"
-"can we schedule a call tomorrow" → "Can we schedule a call tomorrow?" (NO signature added - user didn't say one)`;;
+"can we schedule a call tomorrow" → "Can we schedule a call tomorrow?" (NO signature added - user didn't say one)`;
+
+// For backward compatibility
+export const dictationPrompt = defaultDictationPrompt;
 
 // =======================================================================================
 // SIMPLIFIED EMAIL FORMATTING - SIGNATURE PRESERVATION FIRST
 // =======================================================================================
-export const emailFormattingPrompt = `Email formatting assistant with ABSOLUTE signature preservation.
+export const defaultEmailFormattingPrompt = `Email formatting assistant with ABSOLUTE signature preservation.
 
 SIGNATURE PRESERVATION (HIGHEST PRIORITY):
 • User's spoken signature is SACRED - never change it
@@ -79,10 +80,13 @@ Output: "Hi John,\n\nHope you are doing well. Can we meet at 3PM on Friday?\n\nB
 Input: "hey mike wanted to follow up on our discussion let me know your thoughts"
 Output: "Hey Mike,\n\nWanted to follow up on our discussion. Let me know your thoughts." (NO signature - user didn't say one)`;
 
+// For backward compatibility
+export const emailFormattingPrompt = defaultEmailFormattingPrompt;
+
 // =======================================================================================
 // SIMPLIFIED ASSISTANT PROMPT
 // =======================================================================================
-export const assistantPrompt = `You are Jarvis, a helpful AI assistant. Each conversation starts fresh.
+export const defaultAssistantPrompt = `You are Jarvis, a helpful AI assistant. Each conversation starts fresh.
 
 CORE BEHAVIOR:
 • Give direct answers without unnecessary explanations
@@ -111,6 +115,10 @@ OUTPUT RULES:
 • For code: provide executable code without markdown fences
 • No conversational wrappers when modifying existing text`;
 
+// For backward compatibility
+export const assistantPrompt = defaultAssistantPrompt;
+
+
 // =======================================================================================
 // CODE ASSISTANT PROMPT
 // =======================================================================================
@@ -125,93 +133,12 @@ EXAMPLES:
 "write a sort function" → function sortArray(arr) { return arr.sort((a, b) => a - b); }
 "explain APIs" → [concise explanation with example]`;
 
-// =======================================================================================
-// OPTIMIZED PROMPT SELECTION - SIMPLIFIED LOGIC
-// =======================================================================================
-
-export const createDictationPrompt = () => {
-  return `Clean up spoken text. Fix spelling, grammar, punctuation. Remove filler words. 
-CRITICAL: Output ONLY what was spoken - never add content. Preserve exact signatures.`;
-};
-
 export const safetyPrompt = `I help with productive tasks like writing, communication, and information processing. I can assist with:
 • Document writing and editing
 • Email composition  
 • Information organization
 • Professional communication
 What would you like help with?`;
-
-// =======================================================================================
-// SIMPLIFIED PROMPT SELECTION - CLEAR HIERARCHY
-// =======================================================================================
-export const createAssistantPrompt = (transcript: string, context?: { 
-  type?: string; 
-  task?: string; 
-  hasSelectedText?: boolean; 
-  appContext?: string 
-}) => {
-  const text = transcript.toLowerCase().trim();
-  
-  // 1. Safety check
-  if (containsInappropriateContent(text)) {
-    return safetyPrompt;
-  }
-
-  // 2. Explicit Jarvis commands (highest priority)
-  const isJarvisCommand = /^(hey|hi|hello|okay)?\s*jarvis/.test(text);
-  if (isJarvisCommand) {
-    Logger.debug('Explicit Jarvis command detected');
-    return context?.appContext === 'code' ? codeAssistantPrompt : assistantPrompt;
-  }
-
-  // 3. Text editing with selected text
-  const isTextEditing = context?.hasSelectedText && 
-    /\b(make|fix|change|improve|rewrite|professional|formal|casual|grammar|spelling)\b/.test(text);
-  if (isTextEditing) {
-    Logger.debug('Text editing command with selection detected');
-    return assistantPrompt;
-  }
-
-  // 4. System/CLI commands
-  if (isSystemCommand(text)) {
-    Logger.debug('System command detected');
-    return assistantPrompt;
-  }
-
-  // 5. Default: Always dictation mode
-  Logger.debug('Using dictation mode');
-  return createDictationPrompt();
-};
-
-// =======================================================================================
-// HELPER FUNCTIONS - SIMPLIFIED
-// =======================================================================================
-function isSystemCommand(text: string): boolean {
-  const systemKeywords = [
-    'list files', 'show files', 'open', 'launch', 'search for',
-    'folder', 'directory', 'file content', 'system info'
-  ];
-  return systemKeywords.some(keyword => text.includes(keyword));
-}
-
-function containsInappropriateContent(text: string): boolean {
-  const riskyPatterns = [
-    /\b(illegal|harmful|violent)\s+(content|material)/,
-    /\b(hack|crack|break)\s+(into|system|password)/,
-    /\b(generate|create)\s+(virus|malware)/
-  ];
-  
-  const legitimateExceptions = [
-    /\b(life|growth|productivity)\s+hack/,
-    /hack\s+(together|up|around)/,
-    /hackathon/
-  ];
-  
-  const hasRiskyContent = riskyPatterns.some(pattern => pattern.test(text));
-  const hasLegitimateUse = legitimateExceptions.some(pattern => pattern.test(text));
-  
-  return hasRiskyContent && !hasLegitimateUse;
-}
 
 // Legacy export for backward compatibility
 export const emailPrompt = emailFormattingPrompt;

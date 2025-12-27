@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { theme, themeComponents } from '../styles/theme';
+import { defaultDictationPrompt, defaultEmailFormattingPrompt, defaultAssistantPrompt } from '../prompts/prompts';
 
 // Tab types
-type SettingsTab = 'general' | 'transcription' | 'ai-models' | 'system';
+type SettingsTab = 'general' | 'transcription' | 'ai-models' | 'prompts' | 'system';
 
 // Local Whisper model options
 const WHISPER_MODELS = [
@@ -39,6 +40,22 @@ const Settings: React.FC = () => {
   const [localWhisperModel, setLocalWhisperModel] = useState('tiny.en');
   const [userName, setUserName] = useState('');
   const [showWaveform, setShowWaveform] = useState(true);
+
+  // Custom Prompts
+  const [customDictationPrompt, setCustomDictationPrompt] = useState('');
+  const [customEmailPrompt, setCustomEmailPrompt] = useState('');
+  const [customAssistantPrompt, setCustomAssistantPrompt] = useState('');
+  const [promptsSaving, setPromptsSaving] = useState(false);
+  const [promptsSaved, setPromptsSaved] = useState(false);
+
+  // Expanded prompt modal state
+  const [expandedPrompt, setExpandedPrompt] = useState<null | {
+    type: 'dictation' | 'email' | 'assistant',
+    value: string
+  }>(null);
+
+  // Accordion state for prompts - which card is expanded
+  const [expandedPromptCard, setExpandedPromptCard] = useState<'dictation' | 'email' | 'assistant' | null>(null);
 
   // Transcription API Keys
   const [openaiApiKey, setOpenaiApiKey] = useState('');
@@ -122,6 +139,15 @@ const Settings: React.FC = () => {
       )
     },
     {
+      id: 'prompts',
+      label: 'Prompts',
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      )
+    },
+    {
       id: 'system',
       label: 'System',
       icon: (
@@ -172,6 +198,35 @@ const Settings: React.FC = () => {
           setLocalWhisperModel(appSettings.localWhisperModel ?? 'tiny.en');
           setUserName(appSettings.userName ?? '');
           setShowWaveform(appSettings.showWaveform ?? true);
+
+          // Patch: If any prompt is empty string, update settings file to use default
+          const electronAPI = (window as any).electronAPI;
+          let needsPatch = false;
+          let patchedPrompts: any = {};
+          if (!appSettings.customDictationPrompt || !appSettings.customDictationPrompt.trim()) {
+            setCustomDictationPrompt(defaultDictationPrompt);
+            patchedPrompts.customDictationPrompt = defaultDictationPrompt;
+            needsPatch = true;
+          } else {
+            setCustomDictationPrompt(appSettings.customDictationPrompt);
+          }
+          if (!appSettings.customEmailPrompt || !appSettings.customEmailPrompt.trim()) {
+            setCustomEmailPrompt(defaultEmailFormattingPrompt);
+            patchedPrompts.customEmailPrompt = defaultEmailFormattingPrompt;
+            needsPatch = true;
+          } else {
+            setCustomEmailPrompt(appSettings.customEmailPrompt);
+          }
+          if (!appSettings.customAssistantPrompt || !appSettings.customAssistantPrompt.trim()) {
+            setCustomAssistantPrompt(defaultAssistantPrompt);
+            patchedPrompts.customAssistantPrompt = defaultAssistantPrompt;
+            needsPatch = true;
+          } else {
+            setCustomAssistantPrompt(appSettings.customAssistantPrompt);
+          }
+          if (needsPatch && electronAPI && electronAPI.appUpdateSettings) {
+            await electronAPI.appUpdateSettings(patchedPrompts);
+          }
         }
 
         // Load API keys
@@ -391,6 +446,49 @@ const Settings: React.FC = () => {
     }
   };
 
+  const handlePromptsSave = async () => {
+    setPromptsSaving(true);
+    try {
+      const electronAPI = (window as any).electronAPI;
+      if (electronAPI && electronAPI.appUpdateSettings) {
+        await electronAPI.appUpdateSettings({
+          customDictationPrompt,
+          customEmailPrompt,
+          customAssistantPrompt
+        });
+        setPromptsSaved(true);
+        setTimeout(() => setPromptsSaved(false), 3000);
+      }
+    } catch (error) {
+      console.error('Failed to save custom prompts:', error);
+    } finally {
+      setPromptsSaving(false);
+    }
+  };
+
+  const handleResetPrompts = async () => {
+    if (confirm('Are you sure you want to reset all prompts to their default values?')) {
+      setCustomDictationPrompt(defaultDictationPrompt);
+      setCustomEmailPrompt(defaultEmailFormattingPrompt);
+      setCustomAssistantPrompt(defaultAssistantPrompt);
+
+      try {
+        const electronAPI = (window as any).electronAPI;
+        if (electronAPI && electronAPI.appUpdateSettings) {
+          await electronAPI.appUpdateSettings({
+            customDictationPrompt: defaultDictationPrompt,
+            customEmailPrompt: defaultEmailFormattingPrompt,
+            customAssistantPrompt: defaultAssistantPrompt
+          });
+          setPromptsSaved(true);
+          setTimeout(() => setPromptsSaved(false), 3000);
+        }
+      } catch (error) {
+        console.error('Failed to reset prompts:', error);
+      }
+    }
+  };
+
   const handleShowWaveformToggle = async () => {
     try {
       setIsSaving(true);
@@ -553,6 +651,124 @@ const Settings: React.FC = () => {
       </div>
     );
   }
+
+  // Render a single prompt card for the accordion
+  const renderPromptCard = (
+    id: 'dictation' | 'email' | 'assistant',
+    title: string,
+    description: string,
+    currentValue: string,
+    defaultValue: string,
+    setter: (val: string) => void
+  ) => {
+    const isExpanded = expandedPromptCard === id;
+    const isDefault = currentValue === defaultValue;
+    const charCount = currentValue.length;
+
+    return (
+      <div className={`${theme.glass.secondary} ${theme.radius.xl} overflow-hidden border transition-all duration-300 ${isExpanded ? 'border-white/30 ring-1 ring-blue-500/30' : 'border-white/10 hover:border-white/20'}`}>
+        {/* Card Header */}
+        <div
+          className={`px-5 py-4 flex items-center justify-between cursor-pointer ${isExpanded ? 'bg-white/5' : ''}`}
+          onClick={() => setExpandedPromptCard(isExpanded ? null : id)}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`p-2 rounded-lg ${isExpanded ? 'bg-blue-500/20 text-blue-400' : 'bg-white/5 text-white/60'}`}>
+              {id === 'dictation' && (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                </svg>
+              )}
+              {id === 'email' && (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              )}
+              {id === 'assistant' && (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+              )}
+            </div>
+            <div>
+              <h4 className={`font-medium ${theme.text.primary}`}>{title}</h4>
+              <p className={`text-xs ${theme.text.tertiary}`}>{description}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            {isDefault ? (
+              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-white/5 text-white/40 rounded border border-white/10">
+                Default
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-blue-500/10 text-blue-400 rounded border border-blue-500/20">
+                Customized
+              </span>
+            )}
+            <svg
+              className={`w-5 h-5 text-white/40 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
+
+        {/* Card Content */}
+        <div className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[600px] border-t border-white/10' : 'max-h-0'}`}>
+          <div className="p-5 space-y-4">
+            <div className="relative">
+              <textarea
+                value={currentValue}
+                onChange={(e) => setter(e.target.value)}
+                className={`w-full h-48 bg-black/40 rounded-xl px-4 py-3 ${theme.text.primary} border border-white/10 focus:border-white/30 focus:outline-none transition-colors text-sm font-mono placeholder-white/20 resize-none`}
+              />
+              <div className="absolute right-3 bottom-3 flex gap-2">
+                <div className="px-2 py-1 bg-black/60 rounded text-[10px] text-white/40 border border-white/10 backdrop-blur-sm">
+                  {charCount} chars
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setExpandedPrompt({ type: id, value: currentValue })}
+                  className="p-1.5 bg-white/10 hover:bg-white/20 rounded border border-white/20 text-white transition-colors"
+                  title="Expand to Fullscreen"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4h4M20 16v4h-4M4 16v4h4M20 8V4h-4" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2">
+              <button
+                onClick={() => {
+                  if (confirm('Reset this prompt to default?')) {
+                    setter(defaultValue);
+                  }
+                }}
+                disabled={isDefault}
+                className={`text-xs font-medium flex items-center gap-1.5 transition-colors ${isDefault ? 'text-white/20 cursor-not-allowed' : 'text-white/40 hover:text-white'}`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Reset to Default
+              </button>
+
+              {!isDefault && (
+                <p className="text-[10px] text-blue-400 font-medium">
+                  Changes will be saved once you click 'Save Changes' above
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   // Render General Tab
   const renderGeneralTab = () => (
@@ -1142,6 +1358,175 @@ const Settings: React.FC = () => {
   );
 
   // Render System Tab
+  const renderPromptsTab = () => (
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+      <div className={`${theme.glass.primary} ${theme.radius.xl} p-6 ${theme.shadow}`}>
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h3 className={`text-lg font-semibold ${theme.text.primary} flex items-center gap-2`}>
+              <svg className="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              AI Prompt Engineering
+            </h3>
+            <p className={`text-sm ${theme.text.tertiary} mt-1`}>
+              Customize how Brewster's AI behaves in different contexts
+            </p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetPrompts}
+              className={`px-4 py-2 text-xs font-medium ${theme.text.tertiary} hover:${theme.text.primary} hover:bg-white/5 rounded-lg transition-all`}
+            >
+              Reset All to Defaults
+            </button>
+            <button
+              onClick={handlePromptsSave}
+              disabled={promptsSaving}
+              className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${promptsSaved
+                  ? 'bg-green-500 text-white shadow-lg shadow-green-900/40'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 hover:-translate-y-0.5'
+                } disabled:opacity-50`}
+            >
+              {promptsSaving ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : promptsSaved ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : null}
+              {promptsSaving ? 'Saving...' : promptsSaved ? 'Saved!' : 'Save Changes'}
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {renderPromptCard(
+            'dictation',
+            'Dictation Mode',
+            'Handles standard voice-to-text formatting, grammar, and cleanup.',
+            customDictationPrompt,
+            defaultDictationPrompt,
+            setCustomDictationPrompt
+          )}
+
+          {renderPromptCard(
+            'email',
+            'Email Formatting',
+            'Optimized for converting speech into professional email structures.',
+            customEmailPrompt,
+            defaultEmailFormattingPrompt,
+            setCustomEmailPrompt
+          )}
+
+          {renderPromptCard(
+            'assistant',
+            'Jarvis Assistant',
+            'Full AI personality for questions, system commands, and text editing.',
+            customAssistantPrompt,
+            defaultAssistantPrompt,
+            setCustomAssistantPrompt
+          )}
+        </div>
+
+        {/* Info Box */}
+        <div className="mt-8 p-4 bg-blue-500/5 rounded-2xl border border-blue-500/10 flex gap-4">
+          <div className="p-2 bg-blue-500/10 rounded-xl h-fit">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <h5 className="text-sm font-semibold text-blue-400">Prompt Engineering Tip</h5>
+            <p className="text-xs text-white/50 leading-relaxed mt-1">
+              Be specific with your instructions. Use examples in your prompts (e.g., "instead of 'um', use '...'") to help the AI understand your preferred style. All changes are local and never leave your machine.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Expanded Prompt Modal */}
+      {expandedPrompt && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 backdrop-blur-md bg-black/60 cursor-default animate-in fade-in duration-200" onClick={(e) => {
+          if (e.target === e.currentTarget) setExpandedPrompt(null);
+        }}>
+          <div className={`bg-[#0A0A0B] rounded-3xl shadow-2xl p-8 w-full max-w-4xl border border-white/10 flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200`}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-3">
+                  <div className="p-2 bg-blue-500/20 rounded-xl text-blue-400">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4h4M20 16v4h-4M4 16v4h4M20 8V4h-4" />
+                    </svg>
+                  </div>
+                  {expandedPrompt.type === 'dictation' && 'Dictation Prompt Editor'}
+                  {expandedPrompt.type === 'email' && 'Email Prompt Editor'}
+                  {expandedPrompt.type === 'assistant' && 'Assistant Prompt Editor'}
+                </h2>
+                <p className="text-sm text-white/40 mt-1">Full-screen editor for complex prompt engineering</p>
+              </div>
+              <button
+                onClick={() => setExpandedPrompt(null)}
+                className="p-2 hover:bg-white/10 rounded-xl text-white/40 hover:text-white transition-all"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex-1 min-h-0 flex gap-6">
+              <div className="flex-1 flex flex-col">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-white/20 uppercase tracking-widest">Editor</span>
+                  <span className="text-[10px] text-white/20 font-mono">{expandedPrompt.value.length} characters</span>
+                </div>
+                <textarea
+                  className="flex-1 w-full bg-black/40 rounded-2xl px-6 py-6 text-white border border-white/10 focus:border-blue-500/50 focus:outline-none transition-all text-base font-mono resize-none shadow-inner leading-relaxed"
+                  value={expandedPrompt.value}
+                  onChange={e => setExpandedPrompt({ ...expandedPrompt, value: e.target.value })}
+                  autoFocus
+                  placeholder="Paste or type your expert prompt here..."
+                />
+              </div>
+
+              <div className="w-64 flex flex-col group">
+                <span className="text-xs font-bold text-white/20 uppercase tracking-widest mb-2">Original Default</span>
+                <div className="flex-1 bg-white/[0.02] rounded-2xl p-4 border border-white/5 overflow-y-auto text-[11px] text-white/30 font-mono leading-loose select-all cursor-copy hover:bg-white/[0.04] transition-all">
+                  {expandedPrompt.type === 'dictation' && defaultDictationPrompt}
+                  {expandedPrompt.type === 'email' && defaultEmailFormattingPrompt}
+                  {expandedPrompt.type === 'assistant' && defaultAssistantPrompt}
+                </div>
+                <p className="text-[10px] text-white/20 mt-3 italic">Click to copy original for reference</p>
+              </div>
+            </div>
+
+            <div className="flex gap-4 justify-end mt-8">
+              <button
+                className="px-6 py-3 rounded-xl bg-white/5 text-white/60 font-semibold border border-white/10 hover:bg-white/10 hover:text-white transition-all"
+                onClick={() => setExpandedPrompt(null)}
+              >
+                Discard Changes
+              </button>
+              <button
+                className="px-8 py-3 rounded-xl bg-blue-600 text-white font-bold shadow-lg shadow-blue-900/40 hover:bg-blue-500 hover:-translate-y-0.5 transition-all"
+                onClick={() => {
+                  if (expandedPrompt.type === 'dictation') setCustomDictationPrompt(expandedPrompt.value);
+                  if (expandedPrompt.type === 'email') setCustomEmailPrompt(expandedPrompt.value);
+                  if (expandedPrompt.type === 'assistant') setCustomAssistantPrompt(expandedPrompt.value);
+                  setExpandedPrompt(null);
+                }}
+              >
+                Apply Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   const renderSystemTab = () => (
     <div className="space-y-6">
       {/* Startup & Behavior */}
@@ -1292,6 +1677,7 @@ const Settings: React.FC = () => {
         {activeTab === 'general' && renderGeneralTab()}
         {activeTab === 'transcription' && renderTranscriptionTab()}
         {activeTab === 'ai-models' && renderAiModelsTab()}
+        {activeTab === 'prompts' && renderPromptsTab()}
         {activeTab === 'system' && renderSystemTab()}
       </div>
 
