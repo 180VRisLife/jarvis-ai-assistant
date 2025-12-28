@@ -4,7 +4,7 @@ import * as os from 'os';
 
 export enum LogLevel {
   ERROR = 0,
-  WARNING = 1, 
+  WARNING = 1,
   INFO = 2,
   SUCCESS = 3,
   DEBUG = 4,
@@ -15,11 +15,11 @@ export class Logger {
   private static isDev = process.env.NODE_ENV === 'development';
   private static logFilePath = path.join(os.homedir(), 'Library', 'Logs', 'Jarvis', 'jarvis.log');
   private static isInitialized = false;
-  
+
   // Performance optimizations
   private static currentLogLevel = Logger.isDev ? LogLevel.DEBUG : LogLevel.INFO;
   private static fileLoggingEnabled = true;
-  private static consoleLoggingEnabled = Logger.isDev;
+  private static consoleLoggingEnabled = Logger.isDev; // Forced to true for debugging connection issues
   private static logBuffer: string[] = [];
   private static maxBufferSize = 100;
   private static lastFlush = Date.now();
@@ -85,23 +85,23 @@ export class Logger {
 
   private static addToBuffer(level: string, message: string, args: any[]) {
     const timestamp = new Date().toISOString();
-    const argsStr = args.length > 0 ? ' ' + args.map(arg => 
+    const argsStr = args.length > 0 ? ' ' + args.map(arg =>
       typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
     ).join(' ') : '';
     const logEntry = `[${timestamp}] ${level}: ${message}${argsStr}`;
-    
+
     this.logBuffer.push(logEntry);
-    
+
     // Auto-flush when buffer is full or after time interval
-    if (this.logBuffer.length >= this.maxBufferSize || 
-        (Date.now() - this.lastFlush) > this.flushInterval) {
+    if (this.logBuffer.length >= this.maxBufferSize ||
+      (Date.now() - this.lastFlush) > this.flushInterval) {
       this.flushBuffer();
     }
   }
 
   private static flushBuffer() {
     if (this.logBuffer.length === 0) return;
-    
+
     try {
       this.ensureLogDirectory();
       const entries = this.logBuffer.join('\n') + '\n';
@@ -115,7 +115,7 @@ export class Logger {
 
   // Public logging methods with lazy evaluation for performance
   static info(message: string | (() => string), ...args: any[]) {
-    this.log(LogLevel.INFO, 'ℹ️', 
+    this.log(LogLevel.INFO, 'ℹ️',
       typeof message === 'string' ? () => message : message,
       args.length > 0 ? () => args : undefined
     );

@@ -8,7 +8,7 @@ export class SecureAPIService {
   private readonly cache = new Map<string, { key: string; timestamp: number }>();
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  private constructor() {}
+  private constructor() { }
 
   static getInstance(): SecureAPIService {
     if (!SecureAPIService.instance) {
@@ -38,6 +38,24 @@ export class SecureAPIService {
 
   async getAnthropicKey(): Promise<string> {
     return this.getProviderKey('anthropic');
+  }
+
+  /**
+   * Get Ollama settings for local LLM usage
+   */
+  getOllamaSettings(): { useOllama: boolean; ollamaUrl: string; ollamaModel: string } {
+    try {
+      const appSettings = AppSettingsService.getInstance();
+      const settings = appSettings.getSettings();
+      return {
+        useOllama: settings.useOllama ?? false,
+        ollamaUrl: settings.ollamaUrl ?? 'http://localhost:11434',
+        ollamaModel: settings.ollamaModel ?? 'llama3'
+      };
+    } catch (error) {
+      Logger.debug('[SecureAPI] App settings not available for Ollama');
+      return { useOllama: false, ollamaUrl: 'http://localhost:11434', ollamaModel: 'llama3' };
+    }
   }
 
   async proxyOpenAIRequest(url: string, options: RequestInit = {}): Promise<Response> {

@@ -116,10 +116,12 @@ let lastActiveHotkey: string | null = null;
 // Initialize IPC handlers and register them immediately
 const ipcHandlers = IPCHandlers.getInstance();
 ipcHandlers.setAnalyticsManager(analyticsManager);
-ipcHandlers.registerHandlers();
 
-// Register permission IPC handlers
-PermissionIPCHandlers.getInstance().registerHandlers();
+// Register analytics IPC handlers if available
+if (analyticsManager) {
+  ipcHandlers.setAnalyticsManager(analyticsManager);
+}
+ipcHandlers.registerHandlers();
 
 // Register settings IPC handlers
 SettingsIPCHandlers.getInstance().registerHandlers();
@@ -127,12 +129,14 @@ SettingsIPCHandlers.getInstance().registerHandlers();
 // Register dictation IPC handlers
 DictationIPCHandlers.getInstance().registerHandlers();
 
+// Register permission IPC handlers
+PermissionIPCHandlers.getInstance().registerHandlers();
+
 // Register update IPC handlers
 UpdateIPCHandlers.getInstance().setUpdateService(updateService);
 UpdateIPCHandlers.getInstance().registerHandlers();
 
-// Register nudge IPC handlers early (before dashboard loads)
-// Note: NudgeService will be set later when initialized
+// Register nudge IPC handlers
 NudgeIPCHandlers.getInstance().registerHandlers();
 
 Logger.info('📊 [IPC] IPC handlers registered at module initialization');

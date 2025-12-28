@@ -591,22 +591,29 @@ const Settings: React.FC = () => {
   };
 
   const fetchOllamaModels = async (url: string) => {
+    console.log('[Settings] fetchOllamaModels called with URL:', url);
     setOllamaStatus('checking');
     try {
       const electronAPI = (window as any).electronAPI;
+      console.log('[Settings] electronAPI available:', !!electronAPI);
+      console.log('[Settings] ollamaGetModels available:', !!electronAPI?.ollamaGetModels);
       if (electronAPI && electronAPI.ollamaGetModels) {
         const result = await electronAPI.ollamaGetModels(url);
+        console.log('[Settings] Ollama result:', result);
         if (result.success) {
           setAvailableOllamaModels(result.models);
           setOllamaStatus('connected');
+          console.log('[Settings] Ollama connected, models:', result.models);
         } else {
           setOllamaStatus('error');
-          // Keep previous models if any, or clear? Better to keep just in case of transient error, 
-          // but status error warns user.
+          console.error('[Settings] Ollama error:', result.error);
         }
+      } else {
+        console.error('[Settings] electronAPI.ollamaGetModels not available');
+        setOllamaStatus('error');
       }
     } catch (error) {
-      console.error('Failed to fetch Ollama models:', error);
+      console.error('[Settings] Failed to fetch Ollama models:', error);
       setOllamaStatus('error');
     }
   };
@@ -1082,8 +1089,12 @@ const Settings: React.FC = () => {
                     {ollamaStatus === 'connected' && <span className="text-xs text-emerald-400 flex items-center gap-1">● Connected</span>}
                     {ollamaStatus === 'error' && <span className="text-xs text-red-400 flex items-center gap-1">● Connection Failed</span>}
                     <button
-                      onClick={() => fetchOllamaModels(ollamaUrl)}
-                      className="text-xs text-blue-400 hover:text-blue-300 underline"
+                      type="button"
+                      onClick={() => {
+                        console.log('[Settings] Check Connection button clicked');
+                        fetchOllamaModels(ollamaUrl);
+                      }}
+                      className="px-2 py-1 text-xs bg-blue-500/20 text-blue-400 hover:bg-blue-500/30 rounded border border-blue-500/30 transition-colors"
                     >
                       Check Connection
                     </button>
@@ -1385,8 +1396,8 @@ const Settings: React.FC = () => {
               onClick={handlePromptsSave}
               disabled={promptsSaving}
               className={`px-5 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 flex items-center gap-2 ${promptsSaved
-                  ? 'bg-green-500 text-white shadow-lg shadow-green-900/40'
-                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 hover:-translate-y-0.5'
+                ? 'bg-green-500 text-white shadow-lg shadow-green-900/40'
+                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/40 hover:-translate-y-0.5'
                 } disabled:opacity-50`}
             >
               {promptsSaving ? (

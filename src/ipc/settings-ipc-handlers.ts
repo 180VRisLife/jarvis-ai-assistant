@@ -9,6 +9,7 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { Logger } from '../core/logger';
 import { AppSettingsService } from '../services/app-settings-service';
 import { PushToTalkService } from '../input/push-to-talk-refactored';
+import fetch from 'node-fetch';
 
 type HotkeyCallback = () => void;
 
@@ -201,24 +202,54 @@ export class SettingsIPCHandlers {
 
     // Verify Ollama connection and get models
     ipcMain.handle('ollama:get-models', async (_, url) => {
-      try {
-        const fetch = (await import('node-fetch')).default;
-        // Ensure URL is valid and has no trailing slash
-        const baseUrl = url.replace(/\/$/, '');
-        const response = await fetch(`${baseUrl}/api/tags`);
+      const tryFetchModels = async (fetchUrl: string) => {
+        Logger.info(`[SettingsIPC] Attempting fetch from: ${fetchUrl}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-        if (!response.ok) {
-          throw new Error(`Ollama API error: ${response.status}`);
+        try {
+          const response = await fetch(`${fetchUrl}/api/tags`, {
+            signal: controller.signal as any
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            throw new Error(`Ollama API error: ${response.status}`);
+          }
+
+          const data = await response.json() as { models: Array<{ name: string }> };
+          const names = (data.models || []).map(m => m.name);
+          Logger.info(`[SettingsIPC] Ollama returned ${names.length} models: ${names.join(', ')}`);
+          return names;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
         }
+      };
 
-        const data = await response.json() as { models: Array<{ name: string }> };
-        return {
-          success: true,
-          models: data.models.map(m => m.name)
-        };
+      try {
+        const baseUrl = (url || 'http://localhost:11434').replace(/\/$/, '');
+
+        try {
+          const models = await tryFetchModels(baseUrl);
+          return { success: true, models: models };
+        } catch (firstError) {
+          if (baseUrl.includes('localhost')) {
+            const fallbackUrl = baseUrl.replace('localhost', '127.0.0.1');
+            Logger.info(`[SettingsIPC] Localhost failed, trying fallback: ${fallbackUrl}`);
+            try {
+              const models = await tryFetchModels(fallbackUrl);
+              return { success: true, models: models };
+            } catch (secondError) {
+              throw secondError;
+            }
+          }
+          throw firstError;
+        }
       } catch (error) {
-        Logger.error('[SettingsIPC] Failed to fetch Ollama models:', error);
-        return { success: false, error: (error as Error).message };
+        const err = error as Error;
+        Logger.error(`[SettingsIPC] Ollama connection failed: ${err.message}`);
+        return { success: false, error: err.message };
       }
     });
 
