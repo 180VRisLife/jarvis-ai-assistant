@@ -76,7 +76,11 @@ class CopyAssetsPlugin {
       }
 
       // Copy native modules
-      const entitlementsPath = path.join(__dirname, 'certificates', 'entitlements.mac.plist');
+      let entitlementsPath = path.join(__dirname, 'certificates', 'entitlements.mac.plist');
+      if (!fs.existsSync(entitlementsPath)) {
+        // Fallback to project root entitlements for local dev/contributor builds
+        entitlementsPath = path.join(__dirname, 'entitlements.mac.plist');
+      }
       
       const fnKeySrc = path.join(__dirname, 'build', 'Release', 'fn_key_monitor.node');
       const fnKeyDest = path.join(__dirname, 'dist', 'fn_key_monitor.node');

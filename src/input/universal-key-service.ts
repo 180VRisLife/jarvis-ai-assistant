@@ -33,7 +33,7 @@ export class UniversalKeyService {
       // For Electron apps, we need to bypass webpack's require interception
       const nodeRequire = eval('require');
       const fs = nodeRequire('fs');
-      
+
       // Check multiple possible paths
       const possiblePaths = [
         // Production build - extraResources location
@@ -52,7 +52,7 @@ export class UniversalKeyService {
         path.join(process.cwd(), 'dist/universal_key_monitor.node'),
         path.join(process.cwd(), 'build/Release/universal_key_monitor.node')
       ];
-      
+
       let foundPath: string | null = null;
       for (const modulePath of possiblePaths) {
         if (fs.existsSync(modulePath)) {
@@ -60,16 +60,16 @@ export class UniversalKeyService {
           break;
         }
       }
-      
+
       if (!foundPath) {
         const errorMsg = `Universal key monitor not found. Searched paths: ${possiblePaths.join(', ')}`;
         Logger.error(errorMsg);
         throw new Error(errorMsg);
       }
-      
+
       // Load the native module using eval('require') to bypass webpack
       this.keyMonitor = nodeRequire(foundPath);
-      
+
       Logger.success('Universal key monitor loaded successfully');
       return true;
     } catch (error) {
@@ -105,7 +105,7 @@ export class UniversalKeyService {
       if (!hasPermissions) {
         Logger.warning('Accessibility permissions required for key monitoring');
         await this.promptForAccessibilityPermissions();
-        
+
         // Check again after user interaction
         const hasPermissionsAfter = this.keyMonitor!.checkAccessibilityPermissions();
         if (!hasPermissionsAfter) {
@@ -121,19 +121,21 @@ export class UniversalKeyService {
       const success = this.keyMonitor!.startMonitoring(keyName, (event: string) => {
         const now = Date.now();
         const keyUpper = keyName.toUpperCase();
-        
+
+        console.log(`🎹 [NativeEvent] Received: ${event} for ${keyName}`);
+
         if (event === `${keyUpper}_KEY_DOWN`) {
           // Debounce key down events to prevent double triggers
           if (this.isProcessingKeyDown || (now - this.lastKeyDownTime < this.debounceMs)) {
             Logger.debug(`${keyName} key down debounced (${now - this.lastKeyDownTime}ms since last)`);
             return;
           }
-          
+
           this.isProcessingKeyDown = true;
           this.lastKeyDownTime = now;
-          
+
           Logger.debug(`${keyName} key pressed - Push-to-talk activated`);
-          
+
           // ⚡ IMMEDIATE EXECUTION - Remove setTimeout for instant response
           try {
             this.onKeyDown?.();
@@ -142,19 +144,19 @@ export class UniversalKeyService {
           } finally {
             this.isProcessingKeyDown = false;
           }
-          
+
         } else if (event === `${keyUpper}_KEY_UP`) {
           // Debounce key up events to prevent double triggers
           if (this.isProcessingKeyUp || (now - this.lastKeyUpTime < this.debounceMs)) {
             Logger.debug(`${keyName} key up debounced (${now - this.lastKeyUpTime}ms since last)`);
             return;
           }
-          
+
           this.isProcessingKeyUp = true;
           this.lastKeyUpTime = now;
-          
+
           Logger.debug(`${keyName} key released - Push-to-talk deactivated`);
-          
+
           // ⚡ IMMEDIATE EXECUTION - Remove setTimeout for instant response
           try {
             this.onKeyUp?.();
@@ -184,14 +186,14 @@ export class UniversalKeyService {
   stop(): void {
     if (this.keyMonitor && this.isActive) {
       Logger.debug(`🛑 [${this.currentKey}] Stopping key monitoring`);
-      
+
       try {
         this.keyMonitor.stopMonitoring();
         Logger.info(`✅ [${this.currentKey}] Key monitoring stopped successfully`);
       } catch (error) {
         Logger.error(`❌ [${this.currentKey}] Error stopping key monitoring:`, error);
       }
-      
+
       // Reset all state
       this.isActive = false;
       this.isProcessingKeyDown = false;
@@ -226,7 +228,7 @@ export class UniversalKeyService {
   private async promptForAccessibilityPermissions(): Promise<void> {
     // Send IPC message to renderer to show custom permission dialog
     const { ipcMain } = require('electron');
-    
+
     return new Promise((resolve) => {
       // Send event to dashboard window to show permission dialog
       const dashboardWindow = (global as any).dashboardWindow;
@@ -236,11 +238,11 @@ export class UniversalKeyService {
           title: 'Accessibility Permissions Required',
           message: 'Jarvis needs accessibility permissions to monitor the key for push-to-talk.'
         });
-        
+
         // Listen for response
         const handleResponse = (event: any, response: string) => {
           ipcMain.removeListener('permission-dialog-response', handleResponse);
-          
+
           if (response === 'open-settings') {
             shell.openPath('/System/Library/PreferencePanes/Security.prefPane')
               .then(() => {
@@ -260,7 +262,7 @@ export class UniversalKeyService {
             resolve();
           }
         };
-        
+
         ipcMain.once('permission-dialog-response', handleResponse);
       } else {
         // Fallback to opening settings directly

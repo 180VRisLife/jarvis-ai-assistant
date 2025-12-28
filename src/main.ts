@@ -995,32 +995,29 @@ async function handleHotkeyDown() {
   Logger.debug(`⚡ [TIMING] After timeout clear: ${(afterTimeoutClearTime - keyDownStartTime).toFixed(2)}ms`);
 
   // Check for double-tap (quick second press) - adjusted timing for optimized debounce
-  if (lastFnKeyTime > 0 && timeSinceLastPress < 600 && timeSinceLastPress > 20) {
+  console.log(`🎯 [DoubleTap] Evaluating: last=${lastFnKeyTime}, current=${currentTime}, diff=${timeSinceLastPress}ms`);
+  if (lastFnKeyTime > 0 && timeSinceLastPress < 1000 && timeSinceLastPress > 5) {
     const doubleTapDetectedTime = performance.now();
-    Logger.debug(`⚡ [TIMING] Double-tap detected at: ${(doubleTapDetectedTime - keyDownStartTime).toFixed(2)}ms`);
+    console.log(`⚡ [TIMING] Double-tap detected at: ${(doubleTapDetectedTime - keyDownStartTime).toFixed(2)}ms`);
 
-    Logger.info('🎯 Double Fn key detected - entering hands-free dictation');
-    Logger.debug(`🎯 [DoubleTap] Double-tap confirmed: ${timeSinceLastPress}ms between presses`);
+    console.log('🎯 Double Fn key detected - entering hands-free dictation');
+    console.log(`🎯 [DoubleTap] Double-tap confirmed: ${timeSinceLastPress}ms between presses`);
 
     // Cancel any active operation first (including the one we might have just started)
     if (pushToTalkService?.active || pushToTalkService?.transcribing || (pushToTalkService as any)?.startedFromSingleTap) {
-      Logger.info('🚫 [Cancel] Cancelling active operation before hands-free mode');
+      console.log('🚫 [Cancel] Cancelling active operation BEFORE hands-free mode');
       if (pushToTalkService) {
-        // Make hardStop non-blocking to prevent delays
-        setImmediate(() => {
-          if (pushToTalkService) {
-            pushToTalkService.hardStop();
-            pushToTalkService.active = false;
-            (pushToTalkService as any).startedFromSingleTap = false;
-          }
-        });
+        // MUST BE SYNCHRONOUS to avoid race condition
+        pushToTalkService.hardStop();
+        pushToTalkService.active = false;
+        (pushToTalkService as any).startedFromSingleTap = false;
+        console.log('✅ [Cancel] Synchronous hardStop completed');
       }
       waveformWindow?.webContents.send('push-to-talk-cancel');
       waveformWindow?.webContents.send('transcription-complete');
 
-      // 🔧 MINIMAL DELAY: Hardstop is now non-blocking, so minimal delay needed
-      Logger.debug('⏳ [AudioSession] Minimal audio session cleanup delay...');
-      await new Promise(resolve => setTimeout(resolve, 10)); // 10ms minimal buffer (reduced from 50ms)
+      // 🔧 MINIMAL DELAY: State is now reset, 10ms is plenty for audio cleanup
+      await new Promise(resolve => setTimeout(resolve, 10));
     }
 
     // Record Jarvis usage for nudge system
@@ -1041,20 +1038,23 @@ async function handleHotkeyDown() {
     // Show waveform if setting allows
     const handsFreeSettings = AppSettingsService.getInstance().getSettings();
     if (handsFreeSettings.showWaveform !== false && waveformWindow && !waveformWindow.isDestroyed()) {
-      waveformWindow.show();
+      waveformWindow.showInactive();
     }
+    // 🔴 CRITICAL: Always cancel push-to-talk state first to reset waveform's isPushToTalk
+    waveformWindow?.webContents.send('push-to-talk-cancel');
+    // Now send dictation-start to show the recording bar with stop button
     waveformWindow?.webContents.send('dictation-start');
     lastFnKeyTime = 0; // Reset to prevent triple-tap issues
 
     // ⚡ HANDS-FREE MODE: Start recording immediately for hands-free dictation
     try {
       if (pushToTalkService) {
-        Logger.info('🎤 [HandsFree] Starting hands-free recording immediately');
+        console.log('🎤 [HandsFree] Calling pushToTalkService.start()');
         await pushToTalkService.start();
-        Logger.info('✅ [HandsFree] Hands-free recording started successfully');
+        console.log('✅ [HandsFree] Hands-free recording started successfully');
       }
     } catch (error) {
-      Logger.error('❌ [HandsFree] Failed to start hands-free recording:', error);
+      console.error('❌ [HandsFree] Failed to start hands-free recording:', error);
       // Reset hands-free mode on error
       isHandsFreeModeActive = false;
       if (pushToTalkService) {
@@ -1189,7 +1189,20 @@ async function handleHotkeyDown() {
 async function handleHotkeyUp() {
   fnKeyPressed = false;
 
-  // ⚡ INSTANT UI UPDATE - Send status updates immediately
+  // 🔴 CRITICAL: Check hands-free mode FIRST before sending any stop signals!
+  // In hands-free mode, releasing the key should NOT stop recording.
+  if (isHandsFreeModeActive || pendingHandsFreeStop) {
+    console.log('🎯 [HandsFree] Key released while hands-free active - NOT stopping recording');
+    // Clear the pending stop flag after a delay to ensure proper cleanup
+    if (pendingHandsFreeStop) {
+      setTimeout(() => {
+        pendingHandsFreeStop = false;
+      }, 100);
+    }
+    return;
+  }
+
+  // ⚡ INSTANT UI UPDATE - Only send stop signals if NOT in hands-free mode
   if (waveformWindow && !waveformWindow.isDestroyed()) {
     waveformWindow.webContents.send('push-to-talk-stop');
     // ⚡ INSTANT MICROPHONE STATUS - Send recording stop immediately
@@ -1232,18 +1245,6 @@ async function handleHotkeyUp() {
 
   // DON'T clear pending timeout immediately - let it execute for single-tap
   // The timeout will check if the service is active and handle accordingly
-
-  // Skip push-to-talk release if hands-free mode is active or was just exited
-  if (isHandsFreeModeActive || pendingHandsFreeStop) {
-    Logger.debug('Fn key released - hands-free mode active or pending stop, skipping push-to-talk release');
-    // Clear the pending stop flag after a delay to ensure proper cleanup
-    if (pendingHandsFreeStop) {
-      setTimeout(() => {
-        pendingHandsFreeStop = false;
-      }, 100);
-    }
-    return;
-  }
 
   Logger.debug('Fn key released');
 

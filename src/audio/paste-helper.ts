@@ -23,32 +23,32 @@ const FAST_CACHE_DURATION = 30000; // 30 seconds
  */
 export async function checkSystemPermissions(): Promise<boolean> {
   const now = Date.now();
-  
+
   // Use cached result if check was recent
   if (now - lastPermissionCheck < permissionCheckInterval) {
     return cachedPermissionStatus;
   }
-  
+
   try {
     const testScript = `
       tell application "System Events"
         return true
       end tell
     `;
-    
+
     const result = await new Promise<boolean>((resolve) => {
       const proc = spawn('osascript', ['-e', testScript]);
       let output = '';
       let error = '';
-      
+
       proc.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       proc.stderr.on('data', (data) => {
         error += data.toString();
       });
-      
+
       proc.on('close', (code) => {
         if (code === 0 && output.trim() === 'true') {
           resolve(true);
@@ -57,26 +57,26 @@ export async function checkSystemPermissions(): Promise<boolean> {
           resolve(false);
         }
       });
-      
+
       // Timeout after 3 seconds
       setTimeout(() => {
         proc.kill();
         resolve(false);
       }, 3000);
     });
-    
+
     // Update cache
     lastPermissionCheck = now;
     cachedPermissionStatus = result;
-    
+
     if (result) {
       Logger.debug('System permissions verified');
     } else {
       Logger.warning('System permissions check failed - may need to re-enable accessibility permissions');
     }
-    
+
     return result;
-    
+
   } catch (error) {
     Logger.error('Permission check failed:', error);
     cachedPermissionStatus = false;
@@ -138,14 +138,14 @@ export async function getActiveApp(): Promise<string | null> {
         end try
       end tell
     `;
-    
+
     const result = spawn('osascript', ['-e', applescript]);
     let output = '';
-    
+
     result.stdout.on('data', (data) => {
       output += data.toString();
     });
-    
+
     result.on('close', (code) => {
       const appName = output.trim();
       if (code === 0 && !appName.startsWith('error:')) {
@@ -154,7 +154,7 @@ export async function getActiveApp(): Promise<string | null> {
         resolve(null);
       }
     });
-    
+
     setTimeout(() => {
       result.kill();
       resolve(null);
@@ -168,22 +168,28 @@ export async function getActiveApp(): Promise<string | null> {
 export async function fastPasteMethod(text: string): Promise<boolean> {
   try {
     const startTime = Date.now();
-    
+
     // Try to load the native module using webpack externals
     let typingMonitor;
     try {
       typingMonitor = require('typing_monitor');
+      if (!typingMonitor) {
+        Logger.warning('🔧 [Native Paste] typing_monitor required but returned null/undefined');
+        return false;
+      }
     } catch (webpackError) {
+      Logger.debug(`🔧 [Native Paste] typing_monitor native module not found or failed to load: ${webpackError.message}`);
       return false; // Fall back to AppleScript
     }
-    
+
     if (typeof typingMonitor.fastPasteText !== 'function') {
+      Logger.warning('🔧 [Native Paste] typing_monitor loaded but fastPasteText function is missing. Module might be corrupted or incorrectly compiled.');
       return false;
     }
-    
+
     const success = typingMonitor.fastPasteText(text);
     const pasteTime = Date.now() - startTime;
-    
+
     if (success) {
       Logger.info(`🔧 [Native Paste] Ultra-fast paste completed in ${pasteTime}ms`);
       return true;
@@ -201,10 +207,10 @@ export async function fastPasteMethod(text: string): Promise<boolean> {
 export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_paste_direct_${Date.now()}.txt`;
-    
+
     try {
       fs.writeFileSync(tempFile, text, 'utf8');
-      
+
       const applescript = `
         tell application "System Events"
           try
@@ -222,31 +228,31 @@ export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
           end try
         end tell
       `;
-      
+
       const result = spawn('osascript', ['-e', applescript]);
       let output = '';
-      
+
       result.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const success = code === 0 && output.includes('success');
         resolve(success);
       });
-      
+
       setTimeout(() => {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
+        } catch (e) { }
         resolve(false);
       }, 10000);
-      
+
     } catch (error) {
       Logger.error('Failed to create temp file for direct paste:', error);
       resolve(false);
@@ -260,10 +266,10 @@ export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
 export async function pasteWithFocusCheck(text: string): Promise<boolean> {
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_paste_focus_${Date.now()}.txt`;
-    
+
     try {
       fs.writeFileSync(tempFile, text, 'utf8');
-      
+
       const applescript = `
         tell application "System Events"
           try
@@ -291,31 +297,31 @@ export async function pasteWithFocusCheck(text: string): Promise<boolean> {
           end try
         end tell
       `;
-      
+
       const result = spawn('osascript', ['-e', applescript]);
       let output = '';
-      
+
       result.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const success = code === 0 && output.includes('success');
         resolve(success);
       });
-      
+
       setTimeout(() => {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
+        } catch (e) { }
         resolve(false);
       }, 10000);
-      
+
     } catch (error) {
       Logger.error('Failed to create temp file for focus paste:', error);
       resolve(false);
@@ -329,10 +335,10 @@ export async function pasteWithFocusCheck(text: string): Promise<boolean> {
 export async function pasteToNotesApp(text: string): Promise<boolean> {
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_notes_paste_${Date.now()}.txt`;
-    
+
     try {
       fs.writeFileSync(tempFile, text, 'utf8');
-      
+
       const applescript = `
         tell application "System Events"
           try
@@ -368,24 +374,24 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
           end try
         end tell
       `;
-      
+
       const result = spawn('osascript', ['-e', applescript]);
       let output = '';
       let errorOutput = '';
-      
+
       result.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       result.stderr.on('data', (data) => {
         errorOutput += data.toString();
       });
-      
+
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const success = code === 0 && output.includes('success');
         if (!success && errorOutput) {
           Logger.warning(`📝 [NotesApp] AppleScript error: ${errorOutput.trim()}`);
@@ -395,21 +401,21 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
         }
         resolve(success);
       });
-      
+
       setTimeout(() => {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
+        } catch (e) { }
         Logger.warning('⏱️ [NotesApp] Timeout - operation took too long');
         resolve(false);
       }, 8000);
-      
+
     } catch (error) {
       Logger.error('❌ [NotesApp] Paste error:', error);
       try {
         fs.unlinkSync(tempFile);
-      } catch (e) {}
+      } catch (e) { }
       resolve(false);
     }
   });
@@ -421,10 +427,10 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
 export async function pasteForWebApps(text: string): Promise<boolean> {
   return new Promise((resolve) => {
     const tempFile = `/tmp/jarvis_webapp_paste_${Date.now()}.txt`;
-    
+
     try {
       fs.writeFileSync(tempFile, text, 'utf8');
-      
+
       const applescript = `
         tell application "System Events"
           try
@@ -469,24 +475,24 @@ export async function pasteForWebApps(text: string): Promise<boolean> {
           end try
         end tell
       `;
-      
+
       const result = spawn('osascript', ['-e', applescript]);
       let output = '';
       let errorOutput = '';
-      
+
       result.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       result.stderr.on('data', (data) => {
         errorOutput += data.toString();
       });
-      
+
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const success = code === 0 && output.includes('success');
         if (!success && errorOutput) {
           Logger.warning(`📧 [WebAppPaste] AppleScript error: ${errorOutput.trim()}`);
@@ -496,16 +502,16 @@ export async function pasteForWebApps(text: string): Promise<boolean> {
         }
         resolve(success);
       });
-      
+
       setTimeout(() => {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
+        } catch (e) { }
         Logger.warning('📧 [WebAppPaste] Timeout - operation took too long');
         resolve(false);
       }, 15000);
-      
+
     } catch (error) {
       Logger.error('WebAppPaste file error:', error);
       resolve(false);
@@ -524,12 +530,12 @@ export async function directTypeMethod(text: string): Promise<boolean> {
       resolve(false);
       return;
     }
-    
+
     const tempFile = `/tmp/jarvis_type_${Date.now()}.txt`;
-    
+
     try {
       fs.writeFileSync(tempFile, text, 'utf8');
-      
+
       const applescript = `
         tell application "System Events"
           try
@@ -547,31 +553,31 @@ export async function directTypeMethod(text: string): Promise<boolean> {
           end try
         end tell
       `;
-      
+
       const result = spawn('osascript', ['-e', applescript]);
       let output = '';
-      
+
       result.stdout.on('data', (data) => {
         output += data.toString();
       });
-      
+
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         const success = code === 0 && output.includes('success');
         resolve(success);
       });
-      
+
       setTimeout(() => {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) {}
+        } catch (e) { }
         resolve(false);
       }, 6000);
-      
+
     } catch (error) {
       Logger.error('DirectTypeMethod file error:', error);
       resolve(false);
@@ -596,19 +602,19 @@ export async function simpleFastPaste(text: string): Promise<boolean> {
         end try
       end tell
     `;
-    
+
     const result = spawn('osascript', ['-e', applescript]);
     let output = '';
-    
+
     result.stdout.on('data', (data) => {
       output += data.toString();
     });
-    
+
     result.on('close', (code) => {
       const success = code === 0 && output.includes('success');
       resolve(success);
     });
-    
+
     // Quick timeout - fail fast if it doesn't work
     setTimeout(() => {
       result.kill();
