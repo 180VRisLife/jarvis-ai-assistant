@@ -1139,10 +1139,27 @@ const Settings: React.FC = () => {
                     )}
                   </datalist>
                 </div>
-                <p className={`text-xs ${theme.text.tertiary} mt-2`}>
+                {availableOllamaModels.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+                    {availableOllamaModels.map(model => (
+                      <button
+                        key={model}
+                        type="button"
+                        onClick={() => handleOllamaModelChange(model)}
+                        className={`px-2 py-0.5 text-[10px] rounded-md border transition-all ${ollamaModel === model
+                            ? 'bg-blue-500/20 border-blue-500/40 text-blue-300'
+                            : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                          }`}
+                      >
+                        {model}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p className={`text-[10px] ${theme.text.tertiary} mt-2`}>
                   {availableOllamaModels.length > 0
-                    ? `Found ${availableOllamaModels.length} local models. Select one or type manually.`
-                    : "Type the exact model name from the Ollama library. e.g. sam860/LFM2:1.2b"}
+                    ? `Discovered ${availableOllamaModels.length} models locally. Click to select.`
+                    : "Type the exact model name. e.g. sam860/LFM2:1.2b"}
                 </p>
               </div>
             </div>
