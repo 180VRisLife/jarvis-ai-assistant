@@ -1,10 +1,52 @@
+// Declare webpack's bypass require for native modules
+declare const __non_webpack_require__: typeof require;
+
 import { Logger } from '../core/logger';
 import { app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as https from 'https';
 
-// Module-level state for model management
+// Custom whisper addon with persistent model caching
+let whisperAddon: any = null;
+let whisperHandle: any = null;
+let loadedModelId: string | null = null;
+
+// Load the custom addon - try multiple paths
+function loadWhisperAddon(): any {
+  // When running from dist/, we need to go up to project root
+  const possiblePaths = [
+    // From dist/main.js -> packages/whisper-addon/native/
+    path.join(__dirname, '..', 'packages', 'whisper-addon', 'native', 'whisper_addon.node'),
+    // From src/ during development
+    path.join(__dirname, '..', '..', 'packages', 'whisper-addon', 'native', 'whisper_addon.node'),
+    // Absolute path as fallback
+    path.join(process.cwd(), 'packages', 'whisper-addon', 'native', 'whisper_addon.node'),
+  ];
+
+  for (const addonPath of possiblePaths) {
+    if (fs.existsSync(addonPath)) {
+      try {
+        // Use __non_webpack_require__ to bypass webpack's module resolution for native addons
+        const addon = __non_webpack_require__(addonPath);
+        return addon;
+      } catch {
+        // Try next path
+      }
+    }
+  }
+
+  return null;
+}
+
+// Try to load addon at module initialization
+try {
+  whisperAddon = loadWhisperAddon();
+} catch {
+  // Addon not available, will use fallback
+}
+
+// Legacy module-level state (for fallback)
 let whisperInstance: any = null;
 let currentModelId: string | null = null;
 
@@ -102,6 +144,88 @@ export class LocalWhisperTranscriber {
     // Ensure models directory exists
     if (!fs.existsSync(this.modelsDir)) {
       fs.mkdirSync(this.modelsDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Preload a model for faster transcription
+   * Call this on app startup to eliminate first-transcription delay
+   */
+  async preloadModel(modelId: string): Promise<boolean> {
+    try {
+      if (!whisperAddon) {
+        Logger.info('🎤 [LocalWhisper] Custom addon not available, skipping preload');
+        return false;
+      }
+
+      if (!this.isModelDownloaded(modelId)) {
+        Logger.info(`🎤 [LocalWhisper] Cannot preload - model ${modelId} not downloaded`);
+        return false;
+      }
+
+      const modelPath = this.getModelPath(modelId);
+
+      // If already loaded with this model, skip
+      if (whisperHandle && loadedModelId === modelId) {
+        Logger.info(`🎤 [LocalWhisper] Model ${modelId} already preloaded`);
+        return true;
+      }
+
+      // Free previous model if loaded
+      if (whisperHandle) {
+        try {
+          whisperAddon.free(whisperHandle);
+        } catch (e) {
+          // Ignore free errors
+        }
+        whisperHandle = null;
+        loadedModelId = null;
+      }
+
+      // Load the new model
+      Logger.info(`🎤 [LocalWhisper] Preloading model ${modelId}...`);
+      const startTime = Date.now();
+
+      whisperHandle = whisperAddon.init({
+        model: modelPath,
+        gpu: true
+      });
+
+      loadedModelId = modelId;
+      currentModelId = modelId;
+
+      const duration = Date.now() - startTime;
+      Logger.info(`🎤 [LocalWhisper] Model ${modelId} preloaded in ${duration}ms (GPU enabled)`);
+
+      return true;
+    } catch (error) {
+      Logger.error('🎤 [LocalWhisper] Failed to preload model:', error);
+      whisperHandle = null;
+      loadedModelId = null;
+      return false;
+    }
+  }
+
+  /**
+   * Check if model is preloaded and ready for fast transcription
+   */
+  isModelLoaded(): boolean {
+    return whisperHandle !== null && whisperAddon !== null;
+  }
+
+  /**
+   * Free the loaded model from memory
+   */
+  static freeModel(): void {
+    if (whisperHandle && whisperAddon) {
+      try {
+        whisperAddon.free(whisperHandle);
+        Logger.info('🎤 [LocalWhisper] Model freed from memory');
+      } catch (e) {
+        Logger.error('🎤 [LocalWhisper] Error freeing model:', e);
+      }
+      whisperHandle = null;
+      loadedModelId = null;
     }
   }
 
@@ -257,11 +381,10 @@ export class LocalWhisperTranscriber {
         return null;
       }
 
-      // Convert PCM buffer to WAV for whisper.cpp
-      // Whisper requires at least 1 second of audio, so pad short clips with silence
+      // Convert PCM buffer to WAV and write to temp file
       const sampleRate = 16000;
-      const bytesPerSample = 2; // 16-bit
-      const minDurationMs = 1100; // 1.1 seconds to be safe
+      const bytesPerSample = 2;
+      const minDurationMs = 1100;
       const minSamples = Math.ceil(minDurationMs * sampleRate / 1000);
       const minBytes = minSamples * bytesPerSample;
 
@@ -269,18 +392,70 @@ export class LocalWhisperTranscriber {
       if (audioBuffer.length < minBytes) {
         const currentDurationMs = Math.round((audioBuffer.length / bytesPerSample / sampleRate) * 1000);
         Logger.info(`🎤 [LocalWhisper] Audio too short (${currentDurationMs}ms), padding to ${minDurationMs}ms`);
-
-        // Create a new buffer with silence padding
-        const paddedBuffer = Buffer.alloc(minBytes, 0); // 0 = silence for PCM
-        audioBuffer.copy(paddedBuffer, 0); // Copy original audio at the beginning
+        const paddedBuffer = Buffer.alloc(minBytes, 0);
+        audioBuffer.copy(paddedBuffer, 0);
         processedBuffer = paddedBuffer;
       }
 
       const wavBuffer = this.pcmToWav(processedBuffer, 16000, 1, 16);
-
-      // Write to temp file (whisper-node-addon requires file path)
       const tempFile = path.join(app.getPath('temp'), `whisper-${Date.now()}.wav`);
       fs.writeFileSync(tempFile, wavBuffer);
+
+      // AUTO-PRELOAD: If addon is available but model not loaded, load it now
+      if (whisperAddon && !whisperHandle) {
+        Logger.info('🎤 [LocalWhisper] Auto-preloading model for custom addon...');
+        try {
+          const modelPath = this.getModelPath(modelId);
+          whisperHandle = whisperAddon.init({
+            model: modelPath,
+            gpu: true
+          });
+          loadedModelId = modelId;
+          Logger.info('🎤 [LocalWhisper] ✅ Model preloaded successfully');
+        } catch (preloadError) {
+          Logger.error('🎤 [LocalWhisper] Failed to preload model:', preloadError);
+          whisperHandle = null;
+        }
+      }
+
+      // FAST PATH: Use custom addon if model is preloaded
+      if (this.isModelLoaded() && loadedModelId === modelId && whisperAddon && whisperHandle) {
+        Logger.info('🎤 [LocalWhisper] Using custom addon (FAST PATH - model cached)');
+        try {
+          const language = modelId.endsWith('.en') ? 'en' : 'auto';
+
+          // Convert PCM buffer to Float32Array (whisper expects normalized float audio)
+          const int16Array = new Int16Array(processedBuffer.buffer, processedBuffer.byteOffset, processedBuffer.length / 2);
+          const float32Array = new Float32Array(int16Array.length);
+          for (let i = 0; i < int16Array.length; i++) {
+            float32Array[i] = int16Array[i] / 32768.0; // Normalize to [-1, 1]
+          }
+
+          const result = whisperAddon.transcribe(whisperHandle, {
+            audio: float32Array,
+            language: language
+          });
+
+          // Clean up temp file
+          try { fs.unlinkSync(tempFile); } catch (e) { /* ignore */ }
+
+          const duration = Date.now() - startTime;
+          Logger.info(`🎤 [LocalWhisper] Custom addon transcription complete in ${duration}ms`);
+
+          // Filter silence tokens
+          let text = result.text || '';
+          text = text.replace(/(?:\[BLANK_AUDIO\]|\[\s*Silence\s*\]|\(\s*Silence\s*\))/gi, '').trim();
+
+          const isAssistant = text.toLowerCase().includes('jarvis');
+          return { text, isAssistant, model: `whisper-${modelId}-local` };
+        } catch (addonError) {
+          Logger.error('🎤 [LocalWhisper] Custom addon transcription failed, falling back:', addonError);
+          // Fall through to legacy transcription
+        }
+      }
+
+      // SLOW PATH: Direct transcription (model loaded each time)
+      Logger.info('🎤 [LocalWhisper] Using direct call (slow path)');
 
       try {
         // Import transcribe function dynamically

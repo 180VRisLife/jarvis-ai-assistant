@@ -1,0 +1,29 @@
+{
+  "name": "@jarvis/whisper-addon",
+  "version": "1.0.0",
+  "description": "Custom whisper.cpp native addon with persistent model caching",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build:native": "cmake-js compile -d . -O build",
+    "build:native:release": "cmake-js compile -d . -O build --CDCMAKE_BUILD_TYPE=Release",
+    "build:ts": "tsc",
+    "build": "npm run build:native:release && npm run build:ts",
+    "clean": "rm -rf build dist native/*.node",
+    "postinstall": "npm run build:native:release || echo 'Native build failed, will retry later'"
+  },
+  "devDependencies": {
+    "cmake-js": "^7.3.0",
+    "node-addon-api": "^8.5.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "native",
+    "src"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -25,6 +25,7 @@ import { ShortcutService } from './services/shortcut-service';
 import { TranscriptionService } from './services/transcription-service';
 import { AppLifecycleService } from './services/app-lifecycle-service';
 import { StartupOptimizer } from './services/startup-optimizer';
+import { LocalWhisperTranscriber } from './transcription/local-whisper-transcriber';
 
 // Load environment variables with multiple fallback paths
 // Remove hardcoded fallback - keys must come from secure service
@@ -240,6 +241,24 @@ async function initializeJarvis() {
 
     // Set up global listeners
     setupGlobalListeners();
+
+    // Preload Whisper model for faster transcription (runs in background)
+    const appSettingsForWhisper = AppSettingsService.getInstance();
+    const whisperSettings = appSettingsForWhisper.getSettings();
+    if (whisperSettings.useLocalWhisper && whisperSettings.localWhisperModel) {
+      const whisperTranscriber = new LocalWhisperTranscriber();
+      whisperTranscriber.preloadModel(whisperSettings.localWhisperModel).then(success => {
+        if (success) {
+          Logger.success(`🎤 Whisper model '${whisperSettings.localWhisperModel}' preloaded for fast transcription`);
+        } else {
+          Logger.info('🎤 Whisper model preload skipped (model not downloaded)');
+        }
+      }).catch(err => {
+        Logger.error('🎤 Failed to preload Whisper model:', err);
+      });
+    } else {
+      Logger.info('🎤 Whisper preload skipped (local transcription disabled or no model selected)');
+    }
   } catch (error) {
     Logger.error('Failed to initialize Jarvis Core:', error);
   }
@@ -1516,6 +1535,26 @@ app.whenReady().then(async () => {
 
   // Create menu bar tray
   createMenuBarTray();
+
+  // EARLY WHISPER PRELOAD: Start loading the Metal library and model ASAP
+  // This runs in background so first transcription is fast
+  (async () => {
+    try {
+      const whisperSettings = AppSettingsService.getInstance().getSettings();
+      if (whisperSettings.useLocalWhisper && whisperSettings.localWhisperModel) {
+        Logger.info('🎤 [Startup] Early preload: Starting whisper model warmup...');
+        const whisperTranscriber = new LocalWhisperTranscriber();
+        const success = await whisperTranscriber.preloadModel(whisperSettings.localWhisperModel);
+        if (success) {
+          Logger.success(`🎤 [Startup] Early preload: Whisper model '${whisperSettings.localWhisperModel}' ready!`);
+        } else {
+          Logger.info('🎤 [Startup] Early preload: Model not downloaded, skipping');
+        }
+      }
+    } catch (e) {
+      Logger.error('🎤 [Startup] Early preload failed:', e);
+    }
+  })();
 
   // Don't create overlay windows or register shortcuts at startup
   // They will only be activated after BOTH authentication AND onboarding are completed

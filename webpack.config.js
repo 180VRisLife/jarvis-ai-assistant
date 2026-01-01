@@ -276,6 +276,48 @@ module.exports = [
       __filename: false
     }
   },
+  // Whisper Worker (runs in child process for model caching)
+  {
+    mode: 'production',
+    target: 'node',
+    entry: './src/transcription/whisper-worker.ts',
+    output: {
+      path: path.resolve(__dirname, 'dist'),
+      filename: 'whisper-worker.js'
+    },
+    devtool: 'source-map',
+    resolve: {
+      extensions: ['.ts', '.js']
+    },
+    module: {
+      rules: [
+        {
+          test: /\.ts$/,
+          use: {
+            loader: 'ts-loader',
+            options: {
+              transpileOnly: true,
+              configFile: false,
+              compilerOptions: {
+                noEmit: false,
+                skipLibCheck: true,
+                strict: false,
+                noImplicitAny: false
+              }
+            }
+          },
+          exclude: /node_modules/
+        }
+      ]
+    },
+    externals: {
+      'whisper-node-addon': 'commonjs whisper-node-addon'
+    },
+    node: {
+      __dirname: false,
+      __filename: false
+    }
+  },
   // Preload script
   {
     mode: 'development',
