@@ -766,6 +766,10 @@ function startHotkeyMonitoring() {
         waveformWindow?.webContents.send('transcription-start');
       } else {
         waveformWindow?.webContents.send('transcription-complete');
+        // Hide waveform window when transcription completes
+        if (waveformWindow && !waveformWindow.isDestroyed()) {
+          waveformWindow.hide();
+        }
       }
     },
     (partialText) => {
@@ -1037,6 +1041,10 @@ async function handleHotkeyDown() {
       }
       waveformWindow?.webContents.send('push-to-talk-cancel');
       waveformWindow?.webContents.send('transcription-complete');
+      // Hide waveform window when operation is cancelled
+      if (waveformWindow && !waveformWindow.isDestroyed()) {
+        waveformWindow.hide();
+      }
 
       // 🔧 MINIMAL DELAY: State is now reset, 10ms is plenty for audio cleanup
       await new Promise(resolve => setTimeout(resolve, 10));
@@ -1195,6 +1203,10 @@ async function handleHotkeyDown() {
       }
       waveformWindow?.webContents.send('push-to-talk-cancel');
       waveformWindow?.webContents.send('transcription-complete');
+      // Hide waveform window when operation is cancelled
+      if (waveformWindow && !waveformWindow.isDestroyed()) {
+        waveformWindow.hide();
+      }
       Logger.info('🛑 [Stop] Hard stop requested - cancelling all operations');
       Logger.info('✅ [Stop] Hard stop completed');
       Logger.info('🚫 [Cancel] Current operation cancelled - ready for new recording');

@@ -776,12 +776,9 @@
 
         function hideTranscribing() {
             isTranscribing = false;
-            
-            // Hide transcribing
+
+            // Hide transcribing (don't show idle bar - window will be hidden)
             transcribingBar.classList.add('hidden');
-            
-            // Show default bar
-            bar.classList.remove('hidden');
         }
     </script>
 </body>
