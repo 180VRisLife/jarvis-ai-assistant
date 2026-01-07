@@ -8,11 +8,9 @@ DEFS_Debug := \
 	'-DUSING_V8_SHARED=1' \
 	'-DV8_DEPRECATION_WARNINGS=1' \
 	'-D_GLIBCXX_USE_CXX11_ABI=1' \
+	'-D_FILE_OFFSET_BITS=64' \
 	'-D_DARWIN_USE_64_BIT_INODE=1' \
 	'-D_LARGEFILE_SOURCE' \
-	'-D_FILE_OFFSET_BITS=64' \
-	'-DOPENSSL_NO_PINSHARED' \
-	'-DOPENSSL_THREADS' \
 	'-DNAPI_DISABLE_CPP_EXCEPTIONS' \
 	'-DBUILDING_NODE_EXTENSION' \
 	'-DDEBUG' \
@@ -22,7 +20,8 @@ DEFS_Debug := \
 CFLAGS_Debug := \
 	-O0 \
 	-gdwarf-2 \
-	-mmacosx-version-min=10.15 \
+	-fno-strict-aliasing \
+	-mmacosx-version-min=13.5 \
 	-arch \
 	arm64 \
 	-Wall \
@@ -32,15 +31,13 @@ CFLAGS_Debug := \
 
 # Flags passed to only C files.
 CFLAGS_C_Debug := \
-	-fno-strict-aliasing \
 	-mmacosx-version-min=10.15
 
 # Flags passed to only C++ files.
 CFLAGS_CC_Debug := \
-	-std=gnu++17 \
+	-std=gnu++20 \
 	-stdlib=libc++ \
 	-fno-rtti \
-	-fno-strict-aliasing \
 	-mmacosx-version-min=10.15
 
 # Flags passed to only ObjC files.
@@ -50,14 +47,14 @@ CFLAGS_OBJC_Debug :=
 CFLAGS_OBJCC_Debug :=
 
 INCS_Debug := \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/include/node \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/src \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/openssl/config \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/openssl/openssl/include \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/uv/include \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/zlib \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/v8/include \
-	-I/Users/akshayaggarwal/VSCode/jarvis-ai-assistant-test/node_modules/node-addon-api
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/include/node \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/src \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/openssl/config \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/openssl/openssl/include \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/uv/include \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/zlib \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/v8/include \
+	-I/Users/chrisjamesbliss/Developer/Versioned/jarvis-ai-assistant/node_modules/node-addon-api
 
 DEFS_Release := \
 	'-DNODE_GYP_MODULE_NAME=typing_monitor' \
@@ -65,11 +62,9 @@ DEFS_Release := \
 	'-DUSING_V8_SHARED=1' \
 	'-DV8_DEPRECATION_WARNINGS=1' \
 	'-D_GLIBCXX_USE_CXX11_ABI=1' \
+	'-D_FILE_OFFSET_BITS=64' \
 	'-D_DARWIN_USE_64_BIT_INODE=1' \
 	'-D_LARGEFILE_SOURCE' \
-	'-D_FILE_OFFSET_BITS=64' \
-	'-DOPENSSL_NO_PINSHARED' \
-	'-DOPENSSL_THREADS' \
 	'-DNAPI_DISABLE_CPP_EXCEPTIONS' \
 	'-DBUILDING_NODE_EXTENSION'
 
@@ -77,7 +72,8 @@ DEFS_Release := \
 CFLAGS_Release := \
 	-O3 \
 	-gdwarf-2 \
-	-mmacosx-version-min=10.15 \
+	-fno-strict-aliasing \
+	-mmacosx-version-min=13.5 \
 	-arch \
 	arm64 \
 	-Wall \
@@ -87,15 +83,13 @@ CFLAGS_Release := \
 
 # Flags passed to only C files.
 CFLAGS_C_Release := \
-	-fno-strict-aliasing \
 	-mmacosx-version-min=10.15
 
 # Flags passed to only C++ files.
 CFLAGS_CC_Release := \
-	-std=gnu++17 \
+	-std=gnu++20 \
 	-stdlib=libc++ \
 	-fno-rtti \
-	-fno-strict-aliasing \
 	-mmacosx-version-min=10.15
 
 # Flags passed to only ObjC files.
@@ -105,14 +99,14 @@ CFLAGS_OBJC_Release :=
 CFLAGS_OBJCC_Release :=
 
 INCS_Release := \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/include/node \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/src \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/openssl/config \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/openssl/openssl/include \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/uv/include \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/zlib \
-	-I/Users/akshayaggarwal/Library/Caches/node-gyp/20.19.2/deps/v8/include \
-	-I/Users/akshayaggarwal/VSCode/jarvis-ai-assistant-test/node_modules/node-addon-api
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/include/node \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/src \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/openssl/config \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/openssl/openssl/include \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/uv/include \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/zlib \
+	-I/Users/chrisjamesbliss/Library/Caches/node-gyp/25.2.1/deps/v8/include \
+	-I/Users/chrisjamesbliss/Developer/Versioned/jarvis-ai-assistant/node_modules/node-addon-api
 
 OBJS := \
 	$(obj).target/$(TARGET)/src/native/typing_monitor.o
@@ -146,7 +140,7 @@ $(obj).$(TOOLSET)/$(TARGET)/%.o: $(obj)/%.mm FORCE_DO_CMD
 LDFLAGS_Debug := \
 	-undefined dynamic_lookup \
 	-Wl,-search_paths_first \
-	-mmacosx-version-min=10.15 \
+	-mmacosx-version-min=13.5 \
 	-arch \
 	arm64 \
 	-L$(builddir) \
@@ -159,7 +153,7 @@ LIBTOOLFLAGS_Debug := \
 LDFLAGS_Release := \
 	-undefined dynamic_lookup \
 	-Wl,-search_paths_first \
-	-mmacosx-version-min=10.15 \
+	-mmacosx-version-min=13.5 \
 	-arch \
 	arm64 \
 	-L$(builddir) \
