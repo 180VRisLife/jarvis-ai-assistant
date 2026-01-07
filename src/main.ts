@@ -790,8 +790,8 @@ function startHotkeyMonitoring() {
   const powerManager = PowerManagementService.getInstance();
   powerManager.registerService('audio-monitoring', pushToTalkService);
 
-  // Use UniversalKeyService for all modifier keys (fn, option, control)
-  if (['fn', 'option', 'control'].includes(currentHotkey)) {
+  // Use UniversalKeyService for all modifier keys (fn, fn+ctrl, option, control, command)
+  if (['fn', 'fn+ctrl', 'option', 'control', 'command'].includes(currentHotkey)) {
     Logger.info(`⚙ [Hotkey] Starting universal key monitoring for: ${currentHotkey}`);
 
     try {

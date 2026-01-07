@@ -25,6 +25,7 @@ static bool keyPressed = false;
 // Key flag mappings for NSEvent
 static const std::map<std::string, NSEventModifierFlags> keyFlags = {
     {"fn", NSEventModifierFlagFunction},
+    {"fn+ctrl", NSEventModifierFlagFunction},  // Special combo - handled separately
     {"option", NSEventModifierFlagOption},
     {"control", NSEventModifierFlagControl},
     {"command", NSEventModifierFlagCommand}
@@ -80,7 +81,38 @@ CGEventRef eventTapCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef 
         return event;
     }
     
-    if (monitoredKey == "fn") {
+    if (monitoredKey == "fn+ctrl") {
+        // Handle Fn+Ctrl combination
+        if (type == kCGEventFlagsChanged) {
+            CGEventFlags flags = CGEventGetFlags(event);
+            // Require BOTH Fn AND Ctrl to be pressed
+            bool isFnCtrlPressed = ((flags & kCGEventFlagMaskSecondaryFn) != 0) &&
+                                   ((flags & kCGEventFlagMaskControl) != 0);
+            // Check for other modifiers (excluding Ctrl since it's part of our combo)
+            bool hasOtherModifiers = (flags & (kCGEventFlagMaskCommand | kCGEventFlagMaskShift | kCGEventFlagMaskAlternate)) != 0;
+
+            if (isFnCtrlPressed != keyPressed) {
+                keyPressed = isFnCtrlPressed;
+                handleKeyEvent(isFnCtrlPressed);
+            }
+
+            // Suppress pure fn+ctrl events to prevent system interference
+            if (!hasOtherModifiers && (isFnCtrlPressed || keyPressed)) {
+                return NULL;
+            }
+
+            return event;
+        }
+
+        // Suppress raw keyboard events for function key
+        if (type == kCGEventKeyDown || type == kCGEventKeyUp) {
+            CGKeyCode keyCode = (CGKeyCode)CGEventGetIntegerValueField(event, kCGKeyboardEventKeycode);
+            if (keyCode == 63 || keyCode == 179 || keyCode == 0x3F) {
+                return NULL;
+            }
+        }
+    }
+    else if (monitoredKey == "fn") {
         // Handle function key modifier flag changes (most reliable)
         if (type == kCGEventFlagsChanged) {
             CGEventFlags flags = CGEventGetFlags(event);
@@ -172,7 +204,7 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     }
     
     // OPTIMIZED: Pre-configure system to avoid runtime calls
-    if (keyName == "fn") {
+    if (keyName == "fn" || keyName == "fn+ctrl") {
         // Only log once for debugging
         NSLog(@"Function key monitoring enabled - emoji picker suppression active");
     }
@@ -195,8 +227,8 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     auto it = keyFlags.find(keyName);
     NSEventModifierFlags targetFlag = it->second;
     
-    // For function key, use AGGRESSIVE CGEventTap that catches ALL events
-    if (keyName == "fn") {
+    // For function key (or fn+ctrl combo), use AGGRESSIVE CGEventTap that catches ALL events
+    if (keyName == "fn" || keyName == "fn+ctrl") {
         // Create an aggressive event tap that intercepts EVERYTHING related to function key
         eventTap = CGEventTapCreate(
             kCGSessionEventTap,                   // Session event tap (more compatible)
@@ -224,7 +256,7 @@ Napi::Value StartMonitoring(const Napi::CallbackInfo& info) {
     }
     
     // Also use NSEvent monitoring as backup (for non-fn keys only)
-    if (keyName != "fn") {
+    if (keyName != "fn" && keyName != "fn+ctrl") {
         // Monitor ALL event types globally (even when app is not active)
         globalMonitor = [NSEvent addGlobalMonitorForEventsMatchingMask:(NSEventMaskFlagsChanged | NSEventMaskKeyDown | NSEventMaskKeyUp)
                                                                handler:^(NSEvent *event) {
@@ -286,7 +318,7 @@ Napi::Value StopMonitoring(const Napi::CallbackInfo& info) {
     }
     
     // RESTORE macOS emoji picker functionality when stopping fn monitoring
-    if (monitoredKey == "fn") {
+    if (monitoredKey == "fn" || monitoredKey == "fn+ctrl") {
         system("defaults delete com.apple.HIToolbox AppleFnUsageType 2>/dev/null || true");
         system("defaults write -g NSAutomaticSpellingCorrectionEnabled -bool true");
         system("defaults write -g NSAutomaticTextCompletionEnabled -bool true");
