@@ -86,7 +86,7 @@ export class TextPaster {
         // Paste failed - no text input focused or other issue
         Logger.warning(`🚫 [Paste] Paste returned false - no text input focused`);
         // Copy to clipboard as backup
-        await this.copyToClipboard(smartText);
+        this.copyToClipboard(smartText);
         // Throw to signal failure to caller
         throw new Error('NO_TEXT_INPUT');
       }
@@ -118,7 +118,7 @@ export class TextPaster {
         AudioProcessor.showFailureNotification('Failed to paste transcription - Text copied to clipboard as backup');
 
         // Copy to clipboard as last resort
-        await this.copyToClipboard(smartText);
+        this.copyToClipboard(smartText);
 
         // Re-throw to signal failure
         throw fallbackError;
@@ -254,16 +254,12 @@ export class TextPaster {
 
   /**
    * Copy text to clipboard as fallback
+   * Uses Electron's clipboard API to ensure clipboard managers (Raycast, etc.) detect it
    */
-  private async copyToClipboard(text: string): Promise<void> {
+  private copyToClipboard(text: string): void {
     try {
-      const { spawn } = await import('child_process');
-      const setClipboardScript = `
-        tell application "System Events"
-          set the clipboard to "${text.replace(/"/g, '\\"')}"
-        end tell
-      `;
-      spawn('osascript', ['-e', setClipboardScript]);
+      const { clipboard } = require('electron');
+      clipboard.writeText(text);
       Logger.info('📋 [Clipboard] Text copied to clipboard as backup');
     } catch (clipboardError) {
       Logger.error('🚫 [Clipboard] Even clipboard backup failed:', clipboardError);

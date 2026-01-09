@@ -38,6 +38,10 @@ export class FastStreamingPaster {
         const totalTime = Date.now() - keyReleaseTime;
         Logger.performance(`⚡ [FAST-PASTE] Native paste complete`, Date.now() - pasteStartTime);
         Logger.performance(`✅ [TIMING] ULTRA-FAST END-TO-END`, totalTime);
+
+        // Schedule clipboard write AFTER native module's 1.5s restoration
+        // so clipboard managers (Raycast, etc.) capture the transcription
+        this.scheduleClipboardWrite(smartText);
         return;
       }
 
@@ -49,10 +53,23 @@ export class FastStreamingPaster {
       const totalTime = Date.now() - keyReleaseTime;
       Logger.performance(`⚡ [FAST-PASTE] AppleScript paste complete`, Date.now() - pasteStartTime);
       Logger.performance(`✅ [TIMING] FAST END-TO-END`, totalTime);
+
+      // Also write to clipboard for AppleScript path (no restoration happens but ensures capture)
+      this.scheduleClipboardWrite(smartText);
     } catch (error) {
       Logger.error('⚡ [FAST-PASTE] All methods failed:', error);
       const totalTime = Date.now() - keyReleaseTime;
       Logger.performance(`❌ [TIMING] FAILED END-TO-END`, totalTime);
+
+      // Copy to clipboard so clipboard managers (Raycast, etc.) can capture it
+      try {
+        const { clipboard } = require('electron');
+        clipboard.writeText(smartText);
+        Logger.info('📋 [FAST-PASTE] Text copied to clipboard as backup for clipboard managers');
+      } catch (clipboardError) {
+        Logger.error('📋 [FAST-PASTE] Clipboard backup failed:', clipboardError);
+      }
+
       // Re-throw so caller knows paste failed
       throw error;
     }
@@ -209,5 +226,22 @@ export class FastStreamingPaster {
         reject(new Error('Copy timeout'));
       }, 200);
     });
+  }
+
+  /**
+   * Schedule clipboard write after native module's restoration (1.5s)
+   * This ensures clipboard managers like Raycast capture the transcription
+   */
+  private static scheduleClipboardWrite(text: string): void {
+    // Wait 2 seconds (after native module's 1.5s restoration) then write to clipboard
+    setTimeout(() => {
+      try {
+        const { clipboard } = require('electron');
+        clipboard.writeText(text);
+        Logger.info('📋 [FAST-PASTE] Text written to clipboard for clipboard managers');
+      } catch (error) {
+        Logger.error('📋 [FAST-PASTE] Scheduled clipboard write failed:', error);
+      }
+    }, 2000);
   }
 }
