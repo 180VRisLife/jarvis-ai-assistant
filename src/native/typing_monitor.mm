@@ -11,6 +11,11 @@ static bool tsfnValid = false;
 static NSDate *lastKeyEvent = nil;
 static NSTimer *debounceTimer = nil;
 
+// Security context cache - avoid expensive CGWindowListCopyWindowInfo on every keystroke
+static bool cachedSecureContext = false;
+static NSDate *securityContextCacheTime = nil;
+static const NSTimeInterval SECURITY_CACHE_DURATION = 3.0; // seconds
+
 CGEventRef typingEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
     // Monitor key down events for typing detection
     if (type == kCGEventKeyDown) {
@@ -113,62 +118,82 @@ CGEventRef typingEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventR
         
         // ENHANCED: Only consider it typing if it's a regular character key
         // AND we're not in a secure/password context
-        
-        // Check if the current application or input field suggests secure entry
-        bool isSecureContext = false;
-        
-        // Get the frontmost application
-        NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
-        NSRunningApplication *frontApp = workspace.frontmostApplication;
-        NSString *bundleIdentifier = frontApp.bundleIdentifier;
-        
-        // Check for password managers and security-related apps
-        if ([bundleIdentifier containsString:@"1password"] ||
-            [bundleIdentifier containsString:@"lastpass"] ||
-            [bundleIdentifier containsString:@"bitwarden"] ||
-            [bundleIdentifier containsString:@"keychain"] ||
-            [bundleIdentifier containsString:@"password"] ||
-            [bundleIdentifier containsString:@"security"] ||
-            [bundleIdentifier containsString:@"auth"] ||
-            [bundleIdentifier isEqualToString:@"com.apple.loginwindow"] ||
-            [bundleIdentifier isEqualToString:@"com.apple.screensaver"] ||
-            [bundleIdentifier isEqualToString:@"com.apple.SecurityAgent"]) {
-            isSecureContext = true;
+
+        // Check if we can use cached security context result
+        // Cache is purely time-based - avoids calling NSWorkspace on every keystroke
+        bool cacheValid = false;
+        if (securityContextCacheTime) {
+            NSTimeInterval elapsed = -[securityContextCacheTime timeIntervalSinceNow];
+            cacheValid = (elapsed < SECURITY_CACHE_DURATION);
         }
-        
-        // Check window title for password/secure indicators
-        CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
-        if (windowList) {
-            CFIndex count = CFArrayGetCount(windowList);
-            for (CFIndex i = 0; i < count; i++) {
-                CFDictionaryRef window = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
-                CFStringRef windowName = (CFStringRef)CFDictionaryGetValue(window, kCGWindowName);
-                CFNumberRef windowLayer = (CFNumberRef)CFDictionaryGetValue(window, kCGWindowLayer);
-                
-                if (windowName && windowLayer) {
-                    NSString *title = (__bridge NSString *)windowName;
-                    NSString *lowercaseTitle = [title lowercaseString];
-                    
-                    // Check for password/security related window titles
-                    if ([lowercaseTitle containsString:@"password"] ||
-                        [lowercaseTitle containsString:@"login"] ||
-                        [lowercaseTitle containsString:@"sign in"] ||
-                        [lowercaseTitle containsString:@"authentication"] ||
-                        [lowercaseTitle containsString:@"security"] ||
-                        [lowercaseTitle containsString:@"keychain"] ||
-                        [lowercaseTitle containsString:@"unlock"] ||
-                        [lowercaseTitle containsString:@"credentials"]) {
-                        isSecureContext = true;
-                        break;
+
+        bool isSecureContext = false;
+
+        if (cacheValid) {
+            // Use cached result - no system calls needed
+            isSecureContext = cachedSecureContext;
+        } else {
+            // Full security context check (expensive, but cached for 3 seconds)
+
+            // Get the frontmost application (only when cache expired)
+            NSWorkspace *workspace = [NSWorkspace sharedWorkspace];
+            NSRunningApplication *frontApp = workspace.frontmostApplication;
+            NSString *bundleIdentifier = frontApp.bundleIdentifier;
+
+            // Check for password managers and security-related apps
+            if ([bundleIdentifier containsString:@"1password"] ||
+                [bundleIdentifier containsString:@"lastpass"] ||
+                [bundleIdentifier containsString:@"bitwarden"] ||
+                [bundleIdentifier containsString:@"keychain"] ||
+                [bundleIdentifier containsString:@"password"] ||
+                [bundleIdentifier containsString:@"security"] ||
+                [bundleIdentifier containsString:@"auth"] ||
+                [bundleIdentifier isEqualToString:@"com.apple.loginwindow"] ||
+                [bundleIdentifier isEqualToString:@"com.apple.screensaver"] ||
+                [bundleIdentifier isEqualToString:@"com.apple.SecurityAgent"]) {
+                isSecureContext = true;
+            }
+
+            // Check window title for password/secure indicators (expensive call)
+            if (!isSecureContext) {
+                CFArrayRef windowList = CGWindowListCopyWindowInfo(kCGWindowListOptionOnScreenOnly, kCGNullWindowID);
+                if (windowList) {
+                    CFIndex count = CFArrayGetCount(windowList);
+                    for (CFIndex i = 0; i < count; i++) {
+                        CFDictionaryRef window = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
+                        CFStringRef windowName = (CFStringRef)CFDictionaryGetValue(window, kCGWindowName);
+                        CFNumberRef windowLayer = (CFNumberRef)CFDictionaryGetValue(window, kCGWindowLayer);
+
+                        if (windowName && windowLayer) {
+                            NSString *title = (__bridge NSString *)windowName;
+                            NSString *lowercaseTitle = [title lowercaseString];
+
+                            // Check for password/security related window titles
+                            if ([lowercaseTitle containsString:@"password"] ||
+                                [lowercaseTitle containsString:@"login"] ||
+                                [lowercaseTitle containsString:@"sign in"] ||
+                                [lowercaseTitle containsString:@"authentication"] ||
+                                [lowercaseTitle containsString:@"security"] ||
+                                [lowercaseTitle containsString:@"keychain"] ||
+                                [lowercaseTitle containsString:@"unlock"] ||
+                                [lowercaseTitle containsString:@"credentials"]) {
+                                isSecureContext = true;
+                                break;
+                            }
+                        }
                     }
+                    CFRelease(windowList);
                 }
             }
-            CFRelease(windowList);
+
+            // Update cache
+            cachedSecureContext = isSecureContext;
+            securityContextCacheTime = [NSDate date];
         }
-        
+
         // Don't track typing in secure contexts
         if (isSecureContext) {
-            NSLog(@"[TypingMonitor] Ignoring typing in secure context: %@", bundleIdentifier);
+            NSLog(@"[TypingMonitor] Ignoring typing in secure context");
             return event;
         }
         // Valid typing keys are typically: letters (a-z), numbers (0-9), and basic symbols
@@ -237,24 +262,81 @@ Napi::Value CheckAccessibilityPermissions(const Napi::CallbackInfo& info) {
 
 Napi::Value FastPasteText(const Napi::CallbackInfo& info) {
     Napi::Env env = info.Env();
-    
+
     if (info.Length() < 1 || !info[0].IsString()) {
         Napi::TypeError::New(env, "Expected string argument").ThrowAsJavaScriptException();
         return env.Null();
     }
-    
+
     std::string text = info[0].As<Napi::String>().Utf8Value();
-    
+
     // Check accessibility permissions first
     bool hasPermissions = AXIsProcessTrustedWithOptions((__bridge CFDictionaryRef)@{
         (__bridge NSString*)kAXTrustedCheckOptionPrompt: @NO
     });
-    
+
     if (!hasPermissions) {
+        NSLog(@"[FastPaste] No accessibility permissions");
         return Napi::Boolean::New(env, false);
     }
-    
+
     @try {
+        // Check if there's a text field focused that can receive the paste
+        AXUIElementRef systemWide = AXUIElementCreateSystemWide();
+        AXUIElementRef focusedElement = NULL;
+        AXError error = AXUIElementCopyAttributeValue(systemWide, kAXFocusedUIElementAttribute, (CFTypeRef *)&focusedElement);
+        CFRelease(systemWide);
+
+        if (error != kAXErrorSuccess || focusedElement == NULL) {
+            NSLog(@"[FastPaste] No focused element found - cannot paste");
+            return Napi::Boolean::New(env, false);
+        }
+
+        // Check if the focused element can accept text input
+        CFTypeRef roleRef = NULL;
+        AXUIElementCopyAttributeValue(focusedElement, kAXRoleAttribute, &roleRef);
+
+        bool canAcceptText = false;
+        if (roleRef != NULL) {
+            NSString *role = (__bridge NSString *)roleRef;
+
+            // Check if it's a text-accepting element
+            // Note: AXWebArea is NOT included - it's just a web page, not a text input
+            if ([role isEqualToString:(__bridge NSString *)kAXTextFieldRole] ||
+                [role isEqualToString:(__bridge NSString *)kAXTextAreaRole] ||
+                [role isEqualToString:(__bridge NSString *)kAXComboBoxRole] ||
+                [role isEqualToString:@"AXSearchField"] ||
+                [role isEqualToString:@"AXTextField"]) {
+                canAcceptText = true;
+            }
+            CFRelease(roleRef);
+        }
+
+        // Also check if the element has AXValue attribute (editable text)
+        if (!canAcceptText) {
+            CFTypeRef valueRef = NULL;
+            AXError valueError = AXUIElementCopyAttributeValue(focusedElement, kAXValueAttribute, &valueRef);
+            if (valueError == kAXErrorSuccess && valueRef != NULL) {
+                // Check if the element is editable
+                CFTypeRef editableRef = NULL;
+                AXError editableError = AXUIElementCopyAttributeValue(focusedElement, CFSTR("AXEditable"), &editableRef);
+                if (editableError == kAXErrorSuccess && editableRef != NULL) {
+                    if (CFGetTypeID(editableRef) == CFBooleanGetTypeID()) {
+                        canAcceptText = CFBooleanGetValue((CFBooleanRef)editableRef);
+                    }
+                    CFRelease(editableRef);
+                }
+                CFRelease(valueRef);
+            }
+        }
+
+        CFRelease(focusedElement);
+
+        if (!canAcceptText) {
+            NSLog(@"[FastPaste] Focused element cannot accept text input");
+            return Napi::Boolean::New(env, false);
+        }
+
         NSString *nsText = [NSString stringWithUTF8String:text.c_str()];
         NSLog(@"[FastPaste] Text to paste: %@", nsText);
         
