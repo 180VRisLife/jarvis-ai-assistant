@@ -14,6 +14,9 @@ npm run build
 # Build Mac app (unpacked, for testing)
 npm run build:mac
 
+# After building, ALWAYS update /Applications with the latest build:
+rm -rf "/Applications/Jarvis - AI Assistant.app" && cp -R "release/mac-arm64/Jarvis - AI Assistant.app" /Applications/
+
 # Build signed DMG for distribution
 npm run build:signed        # Both architectures
 npm run build:signed:arm64  # Apple Silicon only
