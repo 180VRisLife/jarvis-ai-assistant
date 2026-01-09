@@ -302,8 +302,7 @@ export class MenuService {
       if (app.isPackaged) {
         iconPath = path.join(process.resourcesPath, templateIconName);
       } else {
-        // In dev mode, icons are copied to dist/ directory (same as __dirname for webpack bundle)
-        iconPath = path.join(__dirname, templateIconName);
+        iconPath = path.join(__dirname, '..', 'assets', templateIconName);
       }
 
       // If template icon doesn't exist, fall back to theme-specific icons
@@ -313,7 +312,7 @@ export class MenuService {
         if (app.isPackaged) {
           iconPath = path.join(process.resourcesPath, iconName);
         } else {
-          iconPath = path.join(__dirname, iconName);
+          iconPath = path.join(__dirname, '..', 'assets', iconName);
         }
         Logger.debug(`🎨 [Tray] Using theme-specific icon: ${iconPath}`);
       } else {
@@ -327,7 +326,7 @@ export class MenuService {
       if (app.isPackaged) {
         iconPath = path.join(process.resourcesPath, iconName);
       } else {
-        iconPath = path.join(__dirname, iconName);
+        iconPath = path.join(__dirname, '..', 'assets', iconName);
       }
       Logger.debug(`🎨 [Tray] Platform-specific icon: ${iconPath}`);
     }
@@ -338,7 +337,7 @@ export class MenuService {
       if (app.isPackaged) {
         iconPath = path.join(process.resourcesPath, fallbackIconName);
       } else {
-        iconPath = path.join(__dirname, fallbackIconName);
+        iconPath = path.join(__dirname, '..', 'assets', fallbackIconName);
       }
       useTemplate = false;
       Logger.warning(`▲ [Tray] Theme icon not found, using fallback: ${iconPath}`);
