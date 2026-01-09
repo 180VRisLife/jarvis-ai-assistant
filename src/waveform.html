@@ -431,6 +431,7 @@
         }
 
         function playStartSound() {
+            console.log('🔊 [Waveform] playStartSound called, audioFeedbackEnabled:', audioFeedbackEnabled);
             if (!audioFeedbackEnabled) return;
 
             if (!sharedAudioContext) {
@@ -480,6 +481,7 @@
         }
 
         function playStopSound() {
+            console.log('🔊 [Waveform] playStopSound called, audioFeedbackEnabled:', audioFeedbackEnabled);
             if (!audioFeedbackEnabled || !sharedAudioContext) return;
             const audioContext = sharedAudioContext;
 
@@ -598,6 +600,7 @@
         }
 
         function cancelPushToTalk() {
+            console.log('🚫 [Waveform] Cancelling push-to-talk operation');
             wasCancelled = true;
             isRecording = false;
             isPushToTalk = false;
@@ -620,6 +623,7 @@
             successBar.classList.add('hidden');
             failureBar.classList.add('hidden');
             networkErrorBar.classList.add('hidden');
+            console.log('✅ [Waveform] Push-to-talk cancelled - UI reset to idle state');
         }
 
         container.addEventListener('click', (e) => {
@@ -639,6 +643,7 @@
         });
 
         ipcRenderer.on('push-to-talk-cancel', () => {
+            console.log('🚫 [Waveform] Push-to-talk cancelled - resetting to idle state');
             cancelPushToTalk();
         });
 
@@ -659,18 +664,22 @@
         });
 
         ipcRenderer.on('audio-feedback-setting', (event, enabled) => {
+            console.log('🔊 [Waveform] Received audio feedback setting:', enabled);
             audioFeedbackEnabled = enabled;
         });
 
         ipcRenderer.on('show-network-error', (event, message) => {
+            console.log('🌐 [Waveform] Showing network error:', message);
             showNetworkError(message);
         });
 
         ipcRenderer.on('play-stop-sound', () => {
+            console.log('🔊 [Waveform] Stop sound is now played in main process for minimal latency');
             // Sound is played directly in main process now
         });
 
         ipcRenderer.on('recording-status', (event, status) => {
+            console.log('🎤 [Waveform] Instant recording status update:', status);
             if (status.recording && status.active) {
                 if (!isPushToTalk && !isRecording) {
                     startPushToTalk();

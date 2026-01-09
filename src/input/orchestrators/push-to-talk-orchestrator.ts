@@ -436,16 +436,32 @@ export class PushToTalkOrchestrator {
     const sessionId = this.stateManager.getCurrentSessionId();
     const session = this.stateManager.getActiveSession();
 
+    console.log('📊 [DEBUG] saveAnalytics called:', {
+      sessionId,
+      hasSession: !!session,
+      textLength: text.length,
+      modelUsed,
+      isAssistantCommand
+    });
+
     if (sessionId && session && text) {
       const mode = isAssistantCommand ? 'command' : 'dictation';
 
       setImmediate(async () => {
         try {
+          console.log('📊 [DEBUG] About to call analyticsManager.endSession');
           await this.analyticsManager.endSession(text, session.duration, modelUsed, mode);
           Logger.debug(`📊 [Orchestrator] Analytics saved for session: ${sessionId}`);
         } catch (error) {
           Logger.error(`📊 [Orchestrator] Analytics save failed for session: ${sessionId}:`, error);
+          console.error('📊 [DEBUG] Analytics error:', error);
         }
+      });
+    } else {
+      console.log('📊 [DEBUG] saveAnalytics skipped - missing data:', {
+        hasSessionId: !!sessionId,
+        hasSession: !!session,
+        hasText: !!text
       });
     }
   }
