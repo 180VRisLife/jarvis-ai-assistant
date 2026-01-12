@@ -12,6 +12,7 @@ export class WindowManager {
   private windows: Map<WindowType, BrowserWindow | null> = new Map();
   private waveformTrackingInterval: NodeJS.Timeout | null = null;
   private lastFrontmostDisplayId: number | null = null;
+  private lastAppWindowBounds: { x: number; y: number; width: number; height: number } | null = null;
 
   private constructor() {}
   
@@ -120,10 +121,10 @@ export class WindowManager {
   }
 
   /**
-   * Get the position of the frontmost application's window using AppleScript
-   * Returns the center point of the window, or null if unable to determine
+   * Get the bounds of the frontmost application's window using AppleScript
+   * Returns the full window bounds (x, y, width, height), or null if unable to determine
    */
-  private getFrontmostWindowPosition(): { x: number; y: number } | null {
+  private getFrontmostWindowBounds(): { x: number; y: number; width: number; height: number } | null {
     try {
       // AppleScript to get the frontmost app's window bounds
       // Using explicit string concatenation to avoid list formatting issues
@@ -156,34 +157,33 @@ export class WindowManager {
         const parts = result.stdout.trim().split(',').map(s => parseInt(s.trim(), 10));
         Logger.info(`🔄 [WindowManager] Parsed parts: ${JSON.stringify(parts)}`);
         if (parts.length === 4 && parts.every(n => !isNaN(n))) {
-          const [winX, winY, winWidth, winHeight] = parts;
-          // Return the center of the window
-          const center = {
-            x: winX + Math.round(winWidth / 2),
-            y: winY + Math.round(winHeight / 2)
-          };
-          Logger.info(`🔄 [WindowManager] Frontmost window center: ${JSON.stringify(center)}`);
-          return center;
+          const [x, y, width, height] = parts;
+          Logger.info(`🔄 [WindowManager] Frontmost window bounds: x=${x}, y=${y}, w=${width}, h=${height}`);
+          return { x, y, width, height };
         }
       }
     } catch (error) {
-      Logger.info(`🔄 [WindowManager] Failed to get frontmost window position: ${error}`);
+      Logger.info(`🔄 [WindowManager] Failed to get frontmost window bounds: ${error}`);
     }
     return null;
   }
 
   /**
-   * Get the best display for waveform positioning.
+   * Get the best display for waveform positioning (fallback when app window positioning fails).
    * Uses cursor position as primary (most reliable for multi-window apps),
    * with frontmost window position as validation/fallback.
    */
   private getBestDisplayForWaveform(): Electron.Display {
     const cursorPoint = screen.getCursorScreenPoint();
     const cursorDisplay = screen.getDisplayNearestPoint(cursorPoint);
-    const frontWindowPos = this.getFrontmostWindowPosition();
+    const frontWindowBounds = this.getFrontmostWindowBounds();
 
-    if (frontWindowPos) {
-      const windowDisplay = screen.getDisplayNearestPoint(frontWindowPos);
+    if (frontWindowBounds) {
+      const windowCenter = {
+        x: frontWindowBounds.x + Math.round(frontWindowBounds.width / 2),
+        y: frontWindowBounds.y + Math.round(frontWindowBounds.height / 2)
+      };
+      const windowDisplay = screen.getDisplayNearestPoint(windowCenter);
 
       // If cursor and window are on the same display, use that display
       if (cursorDisplay.id === windowDisplay.id) {
@@ -201,10 +201,47 @@ export class WindowManager {
     return cursorDisplay;
   }
 
+  // Minimum app window size to position waveform inside it
+  private static readonly MIN_APP_WINDOW_SIZE = 150;
+
   /**
-   * FAST reposition using last known frontmost display.
+   * Calculate waveform position relative to app window bounds.
+   * Returns position clamped to screen bounds, or null if window is too small.
+   */
+  private getWaveformPositionForAppWindow(
+    appBounds: { x: number; y: number; width: number; height: number }
+  ): { x: number; y: number } | null {
+    const windowWidth = 80;
+    const windowHeight = 50;
+    const margin = 20;
+
+    // Skip if app window is too small
+    if (appBounds.width < WindowManager.MIN_APP_WINDOW_SIZE ||
+        appBounds.height < WindowManager.MIN_APP_WINDOW_SIZE) {
+      Logger.info(`🖥️ [WindowManager] App window too small (${appBounds.width}x${appBounds.height}), using monitor fallback`);
+      return null;
+    }
+
+    // Calculate position at bottom-right of app window
+    let x = appBounds.x + appBounds.width - windowWidth - margin;
+    let y = appBounds.y + appBounds.height - windowHeight - margin;
+
+    // Get the display containing this position to clamp to screen bounds
+    const targetDisplay = screen.getDisplayNearestPoint({ x, y });
+    const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = targetDisplay.workArea;
+
+    // Clamp to screen bounds
+    x = Math.max(displayX, Math.min(x, displayX + displayWidth - windowWidth));
+    y = Math.max(displayY, Math.min(y, displayY + displayHeight - windowHeight));
+
+    Logger.info(`🖥️ [WindowManager] Waveform position for app window: x=${x}, y=${y}`);
+    return { x, y };
+  }
+
+  /**
+   * FAST reposition to bottom-right of active app window.
    * Call this BEFORE showing the window to avoid flash.
-   * On first trigger (no cached data), determines correct display.
+   * Falls back to monitor-based positioning if app window unavailable or too small.
    * Returns the display ID where window was positioned.
    */
   quickRepositionWaveformWindow(): number | null {
@@ -213,6 +250,21 @@ export class WindowManager {
       return null;
     }
 
+    // Try to position relative to app window first
+    const appBounds = this.getFrontmostWindowBounds();
+    if (appBounds) {
+      const appWindowPos = this.getWaveformPositionForAppWindow(appBounds);
+      if (appWindowPos) {
+        window.setPosition(appWindowPos.x, appWindowPos.y);
+        // Track the display for fallback purposes
+        const posDisplay = screen.getDisplayNearestPoint(appWindowPos);
+        this.lastFrontmostDisplayId = posDisplay.id;
+        Logger.info(`🖥️ [WindowManager] quickReposition using app window position`);
+        return posDisplay.id;
+      }
+    }
+
+    // Fallback: use monitor-based positioning
     let activeDisplay: Electron.Display;
 
     if (this.lastFrontmostDisplayId !== null) {
@@ -220,12 +272,12 @@ export class WindowManager {
       const displays = screen.getAllDisplays();
       const lastDisplay = displays.find(d => d.id === this.lastFrontmostDisplayId);
       activeDisplay = lastDisplay || screen.getPrimaryDisplay();
-      Logger.info(`🖥️ [WindowManager] quickReposition using cached display: ${activeDisplay.id}`);
+      Logger.info(`🖥️ [WindowManager] quickReposition fallback using cached display: ${activeDisplay.id}`);
     } else {
       // First trigger: determine best display using cursor + window heuristics
       activeDisplay = this.getBestDisplayForWaveform();
       this.lastFrontmostDisplayId = activeDisplay.id;
-      Logger.info(`🖥️ [WindowManager] quickReposition first trigger, selected display: ${activeDisplay.id}`);
+      Logger.info(`🖥️ [WindowManager] quickReposition fallback first trigger, selected display: ${activeDisplay.id}`);
     }
 
     const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = activeDisplay.workArea;
@@ -243,8 +295,8 @@ export class WindowManager {
   }
 
   /**
-   * Reposition waveform window to bottom-right of the screen containing the frontmost app
-   * Falls back to cursor position if frontmost window can't be determined
+   * Reposition waveform window to bottom-right of active app window.
+   * Falls back to monitor-based positioning if app window unavailable or too small.
    */
   repositionWaveformWindow(): void {
     Logger.info('🔄 [WindowManager] repositionWaveformWindow called');
@@ -255,11 +307,25 @@ export class WindowManager {
       return;
     }
 
-    // Use cursor-based display detection (more reliable for multi-window apps)
+    // Try to position relative to app window first
+    const appBounds = this.getFrontmostWindowBounds();
+    if (appBounds) {
+      const appWindowPos = this.getWaveformPositionForAppWindow(appBounds);
+      if (appWindowPos) {
+        Logger.info(`🔄 [WindowManager] Setting waveform position to app window: x=${appWindowPos.x}, y=${appWindowPos.y}`);
+        window.setPosition(appWindowPos.x, appWindowPos.y);
+        // Track the display for fallback purposes
+        const posDisplay = screen.getDisplayNearestPoint(appWindowPos);
+        this.lastFrontmostDisplayId = posDisplay.id;
+        return;
+      }
+    }
+
+    // Fallback: use monitor-based positioning
     const activeDisplay = this.getBestDisplayForWaveform();
 
     const { x: displayX, y: displayY, width: displayWidth, height: displayHeight } = activeDisplay.workArea;
-    Logger.info(`🔄 [WindowManager] Display workArea: x=${displayX}, y=${displayY}, w=${displayWidth}, h=${displayHeight}`);
+    Logger.info(`🔄 [WindowManager] Fallback to display workArea: x=${displayX}, y=${displayY}, w=${displayWidth}, h=${displayHeight}`);
 
     // Window dimensions (sized to fit compact 48x32 bar with small padding)
     const windowWidth = 80;
@@ -270,7 +336,7 @@ export class WindowManager {
     const x = displayX + displayWidth - windowWidth - margin;
     const y = displayY + displayHeight - windowHeight - margin;
 
-    Logger.info(`🔄 [WindowManager] Setting waveform position to: x=${x}, y=${y}`);
+    Logger.info(`🔄 [WindowManager] Setting waveform position to monitor fallback: x=${x}, y=${y}`);
     window.setPosition(x, y);
 
     // Track which display we're on
@@ -278,23 +344,20 @@ export class WindowManager {
   }
 
   /**
-   * Start continuously tracking the frontmost app and repositioning waveform
-   * Called when waveform becomes visible
+   * Start continuously tracking the frontmost app window and repositioning waveform.
+   * Tracks app window position/size changes so waveform follows the active window.
+   * Called when waveform becomes visible.
    */
   startWaveformTracking(): void {
     // Don't start if already tracking
     if (this.waveformTrackingInterval) return;
 
-    // Only track on multi-monitor setups - single monitor doesn't need tracking
-    const displays = screen.getAllDisplays();
-    if (displays.length <= 1) {
-      Logger.info('🔄 [WindowManager] Single monitor detected, skipping waveform tracking');
-      return;
-    }
+    Logger.info('🔄 [WindowManager] Starting waveform tracking');
 
-    Logger.info('🔄 [WindowManager] Starting waveform tracking (multi-monitor)');
+    // Initialize last known bounds from current state
+    this.lastAppWindowBounds = this.getFrontmostWindowBounds();
 
-    // Check every 500ms for active window changes
+    // Check every 300ms for active window changes (faster than before for smoother tracking)
     this.waveformTrackingInterval = setInterval(() => {
       const window = this.windows.get('waveform');
       if (!window || window.isDestroyed() || !window.isVisible()) {
@@ -302,19 +365,31 @@ export class WindowManager {
         return;
       }
 
-      // Get display where frontmost window is
-      const frontWindowPos = this.getFrontmostWindowPosition();
-      if (!frontWindowPos) return;
+      // Get current app window bounds
+      const currentBounds = this.getFrontmostWindowBounds();
+      if (!currentBounds) {
+        // No app window - clear cache and reposition to monitor fallback
+        if (this.lastAppWindowBounds !== null) {
+          Logger.info('🔄 [WindowManager] App window no longer available, using fallback');
+          this.lastAppWindowBounds = null;
+          this.repositionWaveformWindow();
+        }
+        return;
+      }
 
-      const windowDisplay = screen.getDisplayNearestPoint(frontWindowPos);
+      // Check if bounds changed (position or size)
+      const boundsChanged = !this.lastAppWindowBounds ||
+        currentBounds.x !== this.lastAppWindowBounds.x ||
+        currentBounds.y !== this.lastAppWindowBounds.y ||
+        currentBounds.width !== this.lastAppWindowBounds.width ||
+        currentBounds.height !== this.lastAppWindowBounds.height;
 
-      // Only reposition if the display changed
-      if (windowDisplay.id !== this.lastFrontmostDisplayId) {
-        Logger.info(`🔄 [WindowManager] Active window moved to different display: ${this.lastFrontmostDisplayId} → ${windowDisplay.id}`);
-        this.lastFrontmostDisplayId = windowDisplay.id;
+      if (boundsChanged) {
+        Logger.info(`🔄 [WindowManager] App window bounds changed, repositioning waveform`);
+        this.lastAppWindowBounds = currentBounds;
         this.repositionWaveformWindow();
       }
-    }, 500);
+    }, 300);
   }
 
   /**
@@ -327,6 +402,7 @@ export class WindowManager {
       clearInterval(this.waveformTrackingInterval);
       this.waveformTrackingInterval = null;
       this.lastFrontmostDisplayId = null;
+      this.lastAppWindowBounds = null;
     }
   }
 
