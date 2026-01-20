@@ -97,6 +97,36 @@ jobs:
             - Use parallel execution where specified (Phase 3 agents, Phase 4 scoring)
             - Be conservative - only high-confidence issues should pass the 80 threshold
 
+      - name: Check review verdict
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Get the latest comment from claude bot
+          COMMENTS=$(gh pr view ${{ github.event.pull_request.number }} --json comments --jq '.comments | map(select(.author.login == "claude")) | last | .body')
+
+          # Check if review was skipped
+          if echo "$COMMENTS" | grep -q "Skipping review:"; then
+            echo "Review was skipped - passing"
+            exit 0
+          fi
+
+          # Check for FAIL verdict
+          if echo "$COMMENTS" | grep -q "Result: ✗ FAIL"; then
+            echo "::error::Claude code review failed. See PR comment for details."
+            exit 1
+          fi
+
+          # Check for PASS verdict (validation)
+          if echo "$COMMENTS" | grep -q "Result: ✓ PASS"; then
+            echo "Review passed"
+            exit 0
+          fi
+
+          # No verdict found - likely an issue
+          echo "::warning::Could not determine review verdict from comment"
+          exit 0
+
       - name: Notify on failure
         if: failure()
         uses: actions/github-script@v7
