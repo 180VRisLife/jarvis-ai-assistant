@@ -21,24 +21,93 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      pull-requests: read
-      issues: read
+      pull-requests: write
+      issues: write
       id-token: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+
+      - name: Setup global Claude config
+        run: |
+          git clone --depth 1 https://github.com/180VRisLife/.claude.git /tmp/claude-config
+          mkdir -p ~/.claude
+          [ -d /tmp/claude-config/agents ] && cp -r /tmp/claude-config/agents ~/.claude/
+          [ -d /tmp/claude-config/commands ] && cp -r /tmp/claude-config/commands ~/.claude/
+          [ -f /tmp/claude-config/CLAUDE.md ] && cp /tmp/claude-config/CLAUDE.md ~/.claude/
+          rm -rf /tmp/claude-config
+          echo "=== Global Claude config loaded ==="
+          ls -la ~/.claude/
 
       - name: Run Claude Code Review
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
-          plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
-          plugins: 'code-review@claude-code-plugins'
-          prompt: '/code-review:code-review ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
+          claude_args: |
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh pr list:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),Bash(git diff:*),Bash(git show:*),Bash(git blame:*),Bash(git log:*),Read,Glob,Grep,Task"
+          prompt: |
+            # Code Review: PR #${{ github.event.pull_request.number }}
+            **FAIL THRESHOLD:** Any category below 80% fails the check.
 
+            ## Phase 1: Eligibility (HARD GATE)
+            BEFORE ANY OTHER ACTION:
+            1. Run `gh pr view ${{ github.event.pull_request.number }} --json state,isDraft` to check status
+            2. Run `gh pr diff ${{ github.event.pull_request.number }}` to get changes
+
+            If PR matches ANY: draft, closed, already reviewed, or trivial (comments/whitespace/version-bumps/docs-only/<5 code lines):
+            - Post: `gh pr comment ${{ github.event.pull_request.number }} --body "Skipping review: [reason]"`
+            - STOP. Do not proceed.
+
+            ## Phase 2: Context
+            Launch Task (haiku) to gather: CLAUDE.md files in modified dirs, PR diff, and if `.beads/` exists, newly-closed specs with acceptance criteria via `git diff origin/${{ github.base_ref }}...HEAD -- .beads/`.
+
+            ## Phase 3: Parallel Review
+            Launch 5 Tasks IN PARALLEL with `model="opus"`. Ignore: linter issues, formatting, type errors, pre-existing code, build/test.
+
+            **Agent 1 - Compliance:** Check changes against CLAUDE.md and inline comments (// WARNING, // Do not modify). Note specific guideline violations. Review previous PRs that touched these files for recurring feedback.
+            **Agent 2 - Bug Detection:** Focus on changed code, use git blame for context. Identify bugs where code was changed without understanding original intent. Target: null refs, off-by-one, races, leaks. Avoid false positives and nitpicks.
+            **Agent 3 - Spec Review:** If `.beads/` exists, verify newly-closed specs fulfilled acceptance criteria. Check if requirements were removed or weakened. Otherwise N/A.
+            **Agent 4 - Simplification:** Find duplicate patterns and obvious simplification opportunities. Focus on actionable suggestions, not style preferences.
+            **Agent 5 - Security:** OWASP Top 10: injection (SQL, command, XSS), auth/authz issues, secrets/API keys, input validation, insecure configs.
+
+            Each agent returns: issues with description, file:lines, category, reasoning.
+
+            ## Phase 4: Scoring
+            Launch Tasks (haiku) to score each issue 0-100 based on certainty it's a real, impactful issue introduced by this PR. Filter below 80.
+
+            ## Phase 5: Consolidation & Post
+            Compile into format:
+            - Table: Category | Score | Status (✓ pass / ⚠ fail)
+            - "**Result: ✓ PASS**" or "**Result: ✗ FAIL**"
+            - If failures: Issues section with description, GitHub link (full 40-char SHA `${{ github.sha }}` + line range #L[start]-L[end]), suggested fix
+            - If all pass: table + result only, no Issues section
+            - No emojis except result line
+
+            Verify PR still open/not draft, then post via `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
+
+            ## Important Notes
+            - Do NOT attempt to build or typecheck
+            - Use `gh` CLI to interact with GitHub (not web fetch)
+            - Create a todo list to track review progress
+            - Cite issues with full SHA and line ranges
+            - Use parallel execution where specified (Phase 3 agents, Phase 4 scoring)
+            - Be conservative - only high-confidence issues should pass the 80 threshold
+
+      - name: Notify on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number;
+            if (!prNumber) return;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: `⚠️ **Claude Code Review workflow failed**\n\nThis may indicate a configuration or API issue.\n\n[View workflow run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`
+            });
