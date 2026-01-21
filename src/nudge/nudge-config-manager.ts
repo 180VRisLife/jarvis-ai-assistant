@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import path from 'path';
 import { app } from 'electron';
+import { Logger } from '../core/logger';
 
 interface NudgeConfig {
   enabled: boolean;
@@ -52,14 +53,14 @@ export class NudgeConfigManager {
       if (fs.existsSync(this.configPath)) {
         const configData = fs.readFileSync(this.configPath, 'utf8');
         const config = { ...defaultConfig, ...JSON.parse(configData) };
-        console.log('🔔 [Nudge] Config loaded:', config);
+        Logger.debug('🔔 [Nudge] Config loaded:', config);
         return config;
       }
     } catch (error) {
-      console.error('🔔 [Nudge] Error loading config:', error);
+      Logger.error('🔔 [Nudge] Error loading config:', error);
     }
 
-    console.log('🔔 [Nudge] Using default config');
+    Logger.debug('🔔 [Nudge] Using default config');
     return defaultConfig;
   }
 
@@ -90,23 +91,23 @@ export class NudgeConfigManager {
           activity.lastNudgeDate = today;
         }
         
-        console.log('🔔 [Nudge] Activity loaded');
+        Logger.debug('🔔 [Nudge] Activity loaded');
         return activity;
       }
     } catch (error) {
-      console.error('🔔 [Nudge] Error loading activity:', error);
+      Logger.error('🔔 [Nudge] Error loading activity:', error);
     }
 
-    console.log('🔔 [Nudge] Using default activity');
+    Logger.debug('🔔 [Nudge] Using default activity');
     return defaultActivity;
   }
 
   saveConfig(config: NudgeConfig): void {
     try {
       fs.writeFileSync(this.configPath, JSON.stringify(config, null, 2));
-      console.log('🔔 [Nudge] Config saved');
+      Logger.debug('🔔 [Nudge] Config saved');
     } catch (error) {
-      console.error('🔔 [Nudge] Error saving config:', error);
+      Logger.error('🔔 [Nudge] Error saving config:', error);
     }
   }
 
@@ -114,14 +115,14 @@ export class NudgeConfigManager {
     try {
       fs.writeFileSync(this.activityPath, JSON.stringify(activity, null, 2));
     } catch (error) {
-      console.error('🔔 [Nudge] Error saving activity:', error);
+      Logger.error('🔔 [Nudge] Error saving activity:', error);
     }
   }
 
   updateConfig(config: NudgeConfig, newConfig: Partial<NudgeConfig>): NudgeConfig {
     const updatedConfig = { ...config, ...newConfig };
     this.saveConfig(updatedConfig);
-    console.log('🔔 [Nudge] Config updated:', newConfig);
+    Logger.debug('🔔 [Nudge] Config updated:', newConfig);
     return updatedConfig;
   }
 
@@ -130,7 +131,7 @@ export class NudgeConfigManager {
     activity.todayNudgeCount = 0;
     activity.lastNudgeDate = today;
     this.saveActivity(activity);
-    console.log('🔔 [Nudge] Daily nudge count reset');
+    Logger.debug('🔔 [Nudge] Daily nudge count reset');
     return activity;
   }
 
@@ -140,10 +141,10 @@ export class NudgeConfigManager {
     activity.jarvisUsageCount++;
     
     if (activity.nudgedInCurrentSession) {
-      console.log('🔔 [Nudge] Jarvis used after nudge - success!');
+      Logger.debug('🔔 [Nudge] Jarvis used after nudge - success!');
     }
     
-    console.log(`🔔 [Nudge] Jarvis usage recorded (total: ${activity.jarvisUsageCount})`);
+    Logger.debug(`🔔 [Nudge] Jarvis usage recorded (total: ${activity.jarvisUsageCount})`);
     this.saveActivity(activity);
     return activity;
   }
@@ -154,7 +155,7 @@ export class NudgeConfigManager {
     
     const timeSinceLastActivity = now - activity.lastTypingTime;
     if (timeSinceLastActivity > 5 * 60 * 1000) {
-      console.log('🔔 [Nudge] New typing session detected after break');
+      Logger.debug('🔔 [Nudge] New typing session detected after break');
       activity.firstTypingTime = now;
       activity.typingSessionDuration = 0;
       activity.typingStreakCount = 0;
@@ -174,38 +175,38 @@ export class NudgeConfigManager {
   snooze(activity: UserActivity, snoozeTime: number): UserActivity {
     const snoozeUntil = Date.now() + (snoozeTime * 60 * 1000);
     activity.lastJarvisUsage = snoozeUntil;
-    console.log(`🔔 [Nudge] Snoozed for ${snoozeTime} minutes`);
+    Logger.debug(`🔔 [Nudge] Snoozed for ${snoozeTime} minutes`);
     this.saveActivity(activity);
     return activity;
   }
 
   debugStatus(config: NudgeConfig, activity: UserActivity): void {
-    console.log('\n🔔 [Nudge] === DEBUG STATUS ===');
-    console.log('  📋 Configuration:');
-    console.log(`    - Enabled: ${config.enabled}`);
-    console.log(`    - Dismissed permanently: ${config.dismissedPermanently}`);
-    console.log(`    - Frequency: ${config.frequency}`);
-    console.log(`    - Max nudges per day: ${config.maxNudgesPerDay}`);
-    console.log(`    - Smart nudging: ${config.smartNudging}`);
-    console.log(`    - Min typing duration: ${config.minTypingDuration}s`);
+    Logger.debug('\n🔔 [Nudge] === DEBUG STATUS ===');
+    Logger.debug('  📋 Configuration:');
+    Logger.debug(`    - Enabled: ${config.enabled}`);
+    Logger.debug(`    - Dismissed permanently: ${config.dismissedPermanently}`);
+    Logger.debug(`    - Frequency: ${config.frequency}`);
+    Logger.debug(`    - Max nudges per day: ${config.maxNudgesPerDay}`);
+    Logger.debug(`    - Smart nudging: ${config.smartNudging}`);
+    Logger.debug(`    - Min typing duration: ${config.minTypingDuration}s`);
     
-    console.log('  📊 Activity:');
-    console.log(`    - Today's nudge count: ${activity.todayNudgeCount}`);
-    console.log(`    - Total nudges shown: ${activity.totalNudgesShown}`);
-    console.log(`    - Jarvis usage count: ${activity.jarvisUsageCount}`);
-    console.log(`    - Nudged in current session: ${activity.nudgedInCurrentSession}`);
-    console.log(`    - Current session ID: ${activity.currentSessionId}`);
-    console.log(`    - Typing session duration: ${Math.round(activity.typingSessionDuration/1000)}s`);
+    Logger.debug('  📊 Activity:');
+    Logger.debug(`    - Today's nudge count: ${activity.todayNudgeCount}`);
+    Logger.debug(`    - Total nudges shown: ${activity.totalNudgesShown}`);
+    Logger.debug(`    - Jarvis usage count: ${activity.jarvisUsageCount}`);
+    Logger.debug(`    - Nudged in current session: ${activity.nudgedInCurrentSession}`);
+    Logger.debug(`    - Current session ID: ${activity.currentSessionId}`);
+    Logger.debug(`    - Typing session duration: ${Math.round(activity.typingSessionDuration/1000)}s`);
     
     const now = Date.now();
     const timeSinceLastJarvis = now - activity.lastJarvisUsage;
     const timeSinceLastTyping = now - activity.lastTypingTime;
-    console.log(`    - Time since last Jarvis: ${Math.round(timeSinceLastJarvis/1000)}s`);
-    console.log(`    - Time since last typing: ${Math.round(timeSinceLastTyping/1000)}s`);
+    Logger.debug(`    - Time since last Jarvis: ${Math.round(timeSinceLastJarvis/1000)}s`);
+    Logger.debug(`    - Time since last typing: ${Math.round(timeSinceLastTyping/1000)}s`);
     
-    console.log('  📁 Files:');
-    console.log(`    - Config path: ${this.configPath}`);
-    console.log(`    - Activity path: ${this.activityPath}`);
+    Logger.debug('  📁 Files:');
+    Logger.debug(`    - Config path: ${this.configPath}`);
+    Logger.debug(`    - Activity path: ${this.activityPath}`);
     
     if (fs.existsSync(this.configPath)) {
       try {
@@ -213,13 +214,13 @@ export class NudgeConfigManager {
         const fileConfig = JSON.parse(fileContent);
         
         if (fileConfig.enabled !== config.enabled) {
-          console.log('  ⚠️  CONFIG MISMATCH! File says enabled:', fileConfig.enabled, 'but service has:', config.enabled);
+          Logger.debug('  ⚠️  CONFIG MISMATCH! File says enabled:', fileConfig.enabled, 'but service has:', config.enabled);
         }
       } catch (error) {
-        console.log('  ❌ Error reading config file:', error.message);
+        Logger.debug('  ❌ Error reading config file:', error.message);
       }
     } else {
-      console.log('  📄 Config file does not exist');
+      Logger.debug('  📄 Config file does not exist');
     }
   }
 }

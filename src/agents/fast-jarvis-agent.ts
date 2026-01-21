@@ -109,16 +109,16 @@ export class FastJarvisAgent {
     const params = JSON.parse(args);
     
     switch (name) {
-      case "launch_app":
+      case "launch_app": {
         // Import and use app launcher service
         const { appLauncherService } = await import("../services/app-launcher-service");
         return await appLauncherService.launchApp(params.app_name);
-        
-      case "take_screenshot":
+      }
+      case "take_screenshot": {
         // Import and use vision tool
         const { captureScreen } = await import("../tools/vision-tool");
         return await captureScreen();
-        
+      }
       default:
         return "Function not implemented";
     }

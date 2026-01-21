@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { theme } from '../styles/theme';
 
@@ -5,7 +6,7 @@ interface VoiceTranscriptionScreenProps {
   onNext: () => void;
 }
 
-const VoiceTranscriptionScreen: React.FC<VoiceTranscriptionScreenProps> = ({ onNext }) => {
+const VoiceTranscriptionScreen: React.FC<VoiceTranscriptionScreenProps> = ({ onNext: _onNext }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState('');

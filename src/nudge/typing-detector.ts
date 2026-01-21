@@ -1,4 +1,5 @@
 import { NativeTypingService } from '../services/native-typing-service';
+import { Logger } from '../core/logger';
 
 interface UserActivity {
   lastTypingTime: number;
@@ -35,16 +36,16 @@ export class TypingDetector {
 
   start(config: NudgeConfig): boolean {
     if (!config.enabled || config.dismissedPermanently) {
-      console.log('🔔 [Nudge] Typing detection NOT started - nudges disabled');
+      Logger.debug('🔔 [Nudge] Typing detection NOT started - nudges disabled');
       return false;
     }
 
     if (this.nativeTypingService) {
-      console.log('🔔 [Nudge] Typing detection already running');
+      Logger.debug('🔔 [Nudge] Typing detection already running');
       return true;
     }
 
-    console.log('🔔 [Nudge] Starting native typing detection...');
+    Logger.debug('🔔 [Nudge] Starting native typing detection...');
     
     this.nativeTypingService = new NativeTypingService(() => {
       this.onTypingCallback();
@@ -52,12 +53,12 @@ export class TypingDetector {
 
     const success = this.nativeTypingService.start();
     if (!success) {
-      console.error('🔔 [Nudge] Failed to start native typing detection - nudges disabled');
+      Logger.error('🔔 [Nudge] Failed to start native typing detection - nudges disabled');
       this.nativeTypingService = null;
       return false;
     }
 
-    console.log('🔔 [Nudge] Native typing detection started successfully');
+    Logger.debug('🔔 [Nudge] Native typing detection started successfully');
     return true;
   }
 
@@ -65,7 +66,7 @@ export class TypingDetector {
     if (this.nativeTypingService) {
       this.nativeTypingService.stop();
       this.nativeTypingService = null;
-      console.log('🔔 [Nudge] Typing detection stopped');
+      Logger.debug('🔔 [Nudge] Typing detection stopped');
     }
   }
 
@@ -75,7 +76,7 @@ export class TypingDetector {
     const isNewSession = sessionId !== activity.currentSessionId;
     
     if (isNewSession) {
-      console.log(`🔔 [Nudge] New session detected: ${sessionId}`);
+      Logger.debug(`🔔 [Nudge] New session detected: ${sessionId}`);
       activity.currentSessionId = sessionId;
       activity.nudgedInCurrentSession = false;
       activity.firstTypingTime = now;
@@ -91,7 +92,7 @@ export class TypingDetector {
     activity.typingSessionDuration = now - activity.firstTypingTime;
 
     const timeSinceLastJarvis = now - activity.lastJarvisUsage;
-    console.log(`🔔 [Nudge] Typing detected! Session: ${Math.round(activity.typingSessionDuration/1000)}s, Streak: ${activity.typingStreakCount}, Since Jarvis: ${Math.round(timeSinceLastJarvis/1000)}s, Nudged this session: ${activity.nudgedInCurrentSession}`);
+    Logger.debug(`🔔 [Nudge] Typing detected! Session: ${Math.round(activity.typingSessionDuration/1000)}s, Streak: ${activity.typingStreakCount}, Since Jarvis: ${Math.round(timeSinceLastJarvis/1000)}s, Nudged this session: ${activity.nudgedInCurrentSession}`);
 
     return activity;
   }

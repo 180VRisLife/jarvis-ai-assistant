@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
 import { theme } from '../styles/theme';
 
@@ -5,13 +6,13 @@ interface FnKeyTutorialScreenProps {
   onNext: () => void;
 }
 
-const FnKeyTutorialScreen: React.FC<FnKeyTutorialScreenProps> = ({ onNext }) => {
+const FnKeyTutorialScreen: React.FC<FnKeyTutorialScreenProps> = ({ onNext: _onNext }) => {
   const [fnKeyPressed, setFnKeyPressed] = useState(false);
   const [hasPressed, setHasPressed] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showHotkeyOptions, setShowHotkeyOptions] = useState(false);
   const [selectedHotkey, setSelectedHotkey] = useState('fn');
-  const [isLoadingSettings, setIsLoadingSettings] = useState(true);
+  const [_isLoadingSettings, setIsLoadingSettings] = useState(true);
 
   const hotkeyOptions = [
     { label: 'Fn Key', value: 'fn', description: 'Default function key (recommended)' },

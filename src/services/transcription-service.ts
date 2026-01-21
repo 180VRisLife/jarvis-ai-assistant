@@ -1,4 +1,3 @@
-import { BrowserWindow } from 'electron';
 import { Logger } from '../core/logger';
 import { WindowManager } from './window-manager';
 import { AppState } from './app-state';

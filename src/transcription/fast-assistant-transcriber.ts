@@ -174,7 +174,7 @@ export class FastAssistantTranscriber {
     } else {
       // For shorter audio (<10s), try Deepgram first for speed
       try {
-        const deepgramResult = await this.transcribeWithDeepgram(audioBuffer);
+        const _deepgramResult = await this.transcribeWithDeepgram(audioBuffer);
         if (deepgramResult) {
           return deepgramResult;
         }
@@ -568,7 +568,7 @@ export class FastAssistantTranscriber {
 
       // Buffer to collect audio for OpenAI post-processing
       let audioChunks: Buffer[] = [];
-      let deepgramResult = '';
+      const _deepgramResult = '';
 
       // Import and create streaming service
       const { StreamingTranscriptionService } = await import('./streaming-transcription-service');

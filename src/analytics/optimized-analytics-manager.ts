@@ -81,7 +81,7 @@ export class OptimizedAnalyticsManager extends EventEmitter {
     Logger.info(`📊 [Analytics] endSession called - currentSession: ${!!this.currentSession}, sessionId: ${this.currentSession?.id}, userId: ${this.userId}, isAuthenticated: ${this.storage['isAuthenticated']}`);
 
     // Add extra debug logging
-    console.log('📊 [DEBUG] Analytics state:', {
+    Logger.debug('📊 [DEBUG] Analytics state:', {
       userId: this.userId,
       isAuthenticated: this.storage['isAuthenticated'],
       hasCurrentSession: !!this.currentSession,

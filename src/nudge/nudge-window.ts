@@ -1,7 +1,9 @@
 import { BrowserWindow, screen } from 'electron';
+import { Logger } from '../core/logger';
 import path from 'path';
+import { Logger } from '../core/logger';
 
-interface NudgeConfig {
+interface _NudgeConfig {
   enabled: boolean;
   frequency: 'low' | 'medium' | 'high';
   maxNudgesPerDay: number;
@@ -11,7 +13,7 @@ interface NudgeConfig {
   dismissedPermanently: boolean;
 }
 
-interface UserActivity {
+interface _UserActivity {
   lastTypingTime: number;
   lastJarvisUsage: number;
   typingStreakCount: number;
@@ -32,16 +34,16 @@ export class NudgeWindow {
 
   async createWindow(): Promise<void> {
     if (this.nudgeWindow) {
-      console.log('🔔 [Nudge] Window already exists, bringing to front');
+      Logger.debug('🔔 [Nudge] Window already exists, bringing to front');
       this.nudgeWindow.show();
       this.nudgeWindow.focus();
       return;
     }
 
-    console.log('🔔 [Nudge] Creating nudge window...');
+    Logger.debug('🔔 [Nudge] Creating nudge window...');
     
     const primaryDisplay = screen.getPrimaryDisplay();
-    const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+    const { width: screenWidth, height: _screenHeight } = primaryDisplay.workAreaSize;
     
     const windowWidth = 420;
     const windowHeight = 320;
@@ -76,7 +78,7 @@ export class NudgeWindow {
     await this.nudgeWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(this.getNudgeHTML())}`);
     
     this.nudgeWindow.once('ready-to-show', () => {
-      console.log('🔔 [Nudge] Window ready to show');
+      Logger.debug('🔔 [Nudge] Window ready to show');
       if (this.nudgeWindow) {
         this.nudgeWindow.show();
         this.nudgeWindow.focus();
@@ -91,7 +93,7 @@ export class NudgeWindow {
     });
 
     this.nudgeWindow.on('closed', () => {
-      console.log('🔔 [Nudge] Window closed');
+      Logger.debug('🔔 [Nudge] Window closed');
       this.nudgeWindow = null;
       this.isNudgeShowing = false;
     });
@@ -99,7 +101,7 @@ export class NudgeWindow {
 
   hide(): void {
     if (this.nudgeWindow && !this.nudgeWindow.isDestroyed()) {
-      console.log('🔔 [Nudge] Hiding nudge window');
+      Logger.debug('🔔 [Nudge] Hiding nudge window');
       this.nudgeWindow.hide();
       this.isNudgeShowing = false;
     }
@@ -107,7 +109,7 @@ export class NudgeWindow {
 
   destroy(): void {
     if (this.nudgeWindow && !this.nudgeWindow.isDestroyed()) {
-      console.log('🔔 [Nudge] Destroying nudge window');
+      Logger.debug('🔔 [Nudge] Destroying nudge window');
       this.nudgeWindow.destroy();
       this.nudgeWindow = null;
       this.isNudgeShowing = false;

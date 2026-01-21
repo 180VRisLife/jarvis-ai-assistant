@@ -7,6 +7,7 @@
 
 import * as path from 'path';
 import * as fs from 'fs';
+import { Logger } from '../core/logger';
 
 // Track loaded state
 let isModelLoaded = false;
@@ -35,7 +36,7 @@ function sendResponse(response: WorkerResponse) {
 
 async function initializeModel(modelPath: string): Promise<void> {
     try {
-        console.log(`[WhisperWorker] Loading model from: ${modelPath}`);
+        Logger.debug(`[WhisperWorker] Loading model from: ${modelPath}`);
 
         if (!fs.existsSync(modelPath)) {
             throw new Error(`Model file not found: ${modelPath}`);
@@ -48,9 +49,9 @@ async function initializeModel(modelPath: string): Promise<void> {
         currentModelPath = modelPath;
         isModelLoaded = true;
 
-        console.log(`[WhisperWorker] Model loaded successfully: ${path.basename(modelPath)}`);
+        Logger.debug(`[WhisperWorker] Model loaded successfully: ${path.basename(modelPath)}`);
     } catch (error) {
-        console.error('[WhisperWorker] Failed to initialize model:', error);
+        Logger.error('[WhisperWorker] Failed to initialize model:', error);
         throw error;
     }
 }
@@ -67,7 +68,7 @@ async function transcribeAudio(
         throw new Error(`Audio file not found: ${audioFilePath}`);
     }
 
-    console.log(`[WhisperWorker] Transcribing: ${audioFilePath}`);
+    Logger.debug(`[WhisperWorker] Transcribing: ${audioFilePath}`);
     const startTime = Date.now();
 
     const result = await transcribeFunction({
@@ -102,7 +103,7 @@ async function transcribeAudio(
     transcriptText = transcriptText.replace(/(?:\[BLANK_AUDIO\]|\[\s*Silence\s*\]|\(\s*Silence\s*\))/gi, '').trim();
 
     const duration = Date.now() - startTime;
-    console.log(`[WhisperWorker] Transcription complete in ${duration}ms: "${transcriptText.substring(0, 50)}..."`);
+    Logger.debug(`[WhisperWorker] Transcription complete in ${duration}ms: "${transcriptText.substring(0, 50)}..."`);
 
     return transcriptText;
 }
@@ -111,7 +112,7 @@ function unloadModel() {
     isModelLoaded = false;
     currentModelPath = null;
     transcribeFunction = null;
-    console.log('[WhisperWorker] Model unloaded');
+    Logger.debug('[WhisperWorker] Model unloaded');
 }
 
 // Handle messages from parent process
@@ -125,11 +126,11 @@ process.on('message', async (message: WorkerMessage) => {
                 sendResponse({ type: 'result', id, payload: { success: true } });
                 break;
 
-            case 'transcribe':
+            case 'transcribe': {
                 const text = await transcribeAudio(payload.audioFilePath, payload.language);
                 sendResponse({ type: 'result', id, payload: { text } });
                 break;
-
+            }
             case 'unload':
                 unloadModel();
                 sendResponse({ type: 'result', id, payload: { success: true } });
@@ -150,22 +151,22 @@ process.on('message', async (message: WorkerMessage) => {
                 sendResponse({ type: 'error', id, error: `Unknown message type: ${type}` });
         }
     } catch (error: any) {
-        console.error(`[WhisperWorker] Error handling ${type}:`, error);
+        Logger.error(`[WhisperWorker] Error handling ${type}:`, error);
         sendResponse({ type: 'error', id, error: error.message || String(error) });
     }
 });
 
 // Handle process termination
 process.on('SIGTERM', () => {
-    console.log('[WhisperWorker] Received SIGTERM, shutting down...');
+    Logger.debug('[WhisperWorker] Received SIGTERM, shutting down...');
     unloadModel();
     process.exit(0);
 });
 
 process.on('SIGINT', () => {
-    console.log('[WhisperWorker] Received SIGINT, shutting down...');
+    Logger.debug('[WhisperWorker] Received SIGINT, shutting down...');
     unloadModel();
     process.exit(0);
 });
 
-console.log('[WhisperWorker] Worker process started, waiting for messages...');
+Logger.debug('[WhisperWorker] Worker process started, waiting for messages...');

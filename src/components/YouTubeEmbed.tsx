@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useRef, useEffect } from 'react';
 
 interface YouTubeEmbedProps {
@@ -17,7 +18,6 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({
   className = '',
   showThumbnail = true,
   onVideoStart,
-  onVideoEnd,
 }) => {
   const [isPlaying, setIsPlaying] = useState(autoplay);
   const [hasError, setHasError] = useState(false);

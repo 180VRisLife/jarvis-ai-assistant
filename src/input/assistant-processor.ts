@@ -20,8 +20,8 @@ export class AssistantProcessor {
    * OR when text is selected (>20 chars) with editing command patterns
    */
   async processWithAssistantDetection(
-    transcriptText: string, 
-    appContext: AppContext
+    transcriptText: string,
+    _appContext: AppContext
   ): Promise<{ text: string; isAssistant: boolean }> {
 
     // 1. EXPLICIT JARVIS KEYWORD DETECTION (first few words)
@@ -30,9 +30,9 @@ export class AssistantProcessor {
     const firstPart = normalizedText.slice(0, 50); // Check first 50 chars for jarvis keyword
     
     // More flexible patterns to catch various transcription formats
-    const hasJarvisKeyword = 
-      /^(hey|hi|okay|ok)[\s,.\-]*jarvis/i.test(firstPart) ||  // "hey jarvis", "hey, jarvis", "hey. jarvis"
-      /^jarvis[\s,.\-]/i.test(firstPart);  // "jarvis, can you..."
+    const hasJarvisKeyword =
+      /^(hey|hi|okay|ok)[\s,.-]*jarvis/i.test(firstPart) ||  // "hey jarvis", "hey, jarvis", "hey. jarvis"
+      /^jarvis[\s,.-]/i.test(firstPart);  // "jarvis, can you..."
     
     // 2. STRICT DICTATION MODE ENFORCEMENT
     // Ensure we're extremely conservative about triggering assistant mode

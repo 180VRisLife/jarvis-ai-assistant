@@ -1,6 +1,9 @@
 import * as fs from 'fs';
+import { Logger } from '../core/logger';
 import * as path from 'path';
+import { Logger } from '../core/logger';
 import { Jimp, JimpMime } from 'jimp';
+import { Logger } from '../core/logger';
 
 export interface ImageCompressionOptions {
   maxWidth?: number;
@@ -62,8 +65,8 @@ export async function compressImage(
     const originalBuffer = await fs.promises.readFile(imagePath);
     const originalSize = originalBuffer.length;
 
-    console.log(`[ImageCompression] Processing image: ${imagePath}`);
-    console.log(`[ImageCompression] Original size: ${(originalSize / 1024).toFixed(2)} KB`);
+    Logger.debug(`[ImageCompression] Processing image: ${imagePath}`);
+    Logger.debug(`[ImageCompression] Original size: ${(originalSize / 1024).toFixed(2)} KB`);
 
     let processedBuffer: Buffer;
     let outputMimeType: string;
@@ -80,7 +83,7 @@ export async function compressImage(
       const originalWidth = image.width;
       const originalHeight = image.height;
       
-      console.log(`[ImageCompression] Original dimensions: ${originalWidth}x${originalHeight}`);
+      Logger.debug(`[ImageCompression] Original dimensions: ${originalWidth}x${originalHeight}`);
 
       // Calculate new dimensions while maintaining aspect ratio
       let newWidth = originalWidth;
@@ -94,7 +97,7 @@ export async function compressImage(
         newWidth = Math.round(originalWidth * ratio);
         newHeight = Math.round(originalHeight * ratio);
 
-        console.log(`[ImageCompression] Resizing to: ${newWidth}x${newHeight}`);
+        Logger.debug(`[ImageCompression] Resizing to: ${newWidth}x${newHeight}`);
         image.resize({ w: newWidth, h: newHeight });
       }
 
@@ -108,7 +111,7 @@ export async function compressImage(
         outputMimeType = 'image/png';
       } else if (format === 'webp') {
         // Jimp doesn't support WebP, fallback to JPEG
-        console.log('[ImageCompression] WebP not supported by Jimp, using JPEG instead');
+        Logger.debug('[ImageCompression] WebP not supported by Jimp, using JPEG instead');
         processedBuffer = await image.getBuffer(JimpMime.jpeg, { quality });
         outputMimeType = 'image/jpeg';
       } else {
@@ -121,8 +124,8 @@ export async function compressImage(
     const compressedSize = processedBuffer.length;
     const compressionRatio = originalSize > 0 ? ((originalSize - compressedSize) / originalSize) * 100 : 0;
 
-    console.log(`[ImageCompression] Compressed size: ${(compressedSize / 1024).toFixed(2)} KB`);
-    console.log(`[ImageCompression] Compression ratio: ${compressionRatio.toFixed(2)}%`);
+    Logger.debug(`[ImageCompression] Compressed size: ${(compressedSize / 1024).toFixed(2)} KB`);
+    Logger.debug(`[ImageCompression] Compression ratio: ${compressionRatio.toFixed(2)}%`);
 
     // Convert to base64
     const base64Data = processedBuffer.toString('base64');
@@ -136,7 +139,7 @@ export async function compressImage(
     };
 
   } catch (error: any) {
-    console.error('[ImageCompression] Error compressing image:', error);
+    Logger.error('[ImageCompression] Error compressing image:', error);
     return null;
   }
 }

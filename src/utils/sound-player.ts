@@ -5,7 +5,7 @@ import { Logger } from '../core/logger';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const execAsync = promisify(exec);
+const _execAsync = promisify(exec);
 
 /**
  * Simple sound player for immediate audio feedback

@@ -1,6 +1,9 @@
 import fs from 'fs';
+import { Logger } from '../core/logger';
 import path from 'path';
+import { Logger } from '../core/logger';
 import { app } from 'electron';
+import { Logger } from '../core/logger';
 
 interface DictionaryEntry {
   id: string;
@@ -46,7 +49,7 @@ class NodeDictionaryService {
     try {
       fs.writeFileSync(this.dictionaryPath, JSON.stringify(dictionary, null, 2));
     } catch (error) {
-      console.error('Failed to save dictionary:', error);
+      Logger.error('Failed to save dictionary:', error);
     }
   }
 
@@ -219,7 +222,7 @@ class NodeDictionaryService {
         const regex = new RegExp(`\\b${this.escapeRegex(entry.originalWord)}\\b`, 'gi');
         result = result.replace(regex, targetWord);
         if (result !== originalText) {
-          console.log(`📖 [Dictionary] Applied originalWord correction: "${entry.originalWord}" -> "${targetWord}"`);
+          Logger.debug(`📖 [Dictionary] Applied originalWord correction: "${entry.originalWord}" -> "${targetWord}"`);
         }
       }
       
@@ -230,7 +233,7 @@ class NodeDictionaryService {
         const regex = new RegExp(`\\b${this.escapeRegex(variation)}\\b`, 'gi');
         result = result.replace(regex, targetWord);
         if (result !== beforeText) {
-          console.log(`📖 [Dictionary] Applied phonetic correction: "${variation}" -> "${targetWord}"`);
+          Logger.debug(`📖 [Dictionary] Applied phonetic correction: "${variation}" -> "${targetWord}"`);
         }
       }
       
@@ -241,13 +244,13 @@ class NodeDictionaryService {
         const regex = new RegExp(`\\b${this.escapeRegex(misspelling)}\\b`, 'gi');
         result = result.replace(regex, targetWord);
         if (result !== beforeText) {
-          console.log(`📖 [Dictionary] Applied misspelling correction: "${misspelling}" -> "${targetWord}"`);
+          Logger.debug(`📖 [Dictionary] Applied misspelling correction: "${misspelling}" -> "${targetWord}"`);
         }
       }
     }
     
     if (result !== text) {
-      console.log(`📖 [Dictionary] Final correction: "${text}" -> "${result}"`);
+      Logger.debug(`📖 [Dictionary] Final correction: "${text}" -> "${result}"`);
     }
     
     return result;
@@ -258,7 +261,7 @@ class NodeDictionaryService {
    */
   private generateCommonMisspellings(word: string): string[] {
     const misspellings: string[] = [];
-    const lowerWord = word.toLowerCase();
+    const _lowerWord = word.toLowerCase();
     
     // Remove one character at a time (common typing errors)
     for (let i = 0; i < word.length; i++) {
@@ -294,7 +297,7 @@ class NodeDictionaryService {
     }
     
     // Common phonetic patterns
-    const lowerWord = word.toLowerCase();
+    const _lowerWord = word.toLowerCase();
     
     // Replace 'oo' with 'u' and vice versa
     if (lowerWord.includes('oo')) {
@@ -376,10 +379,10 @@ class NodeDictionaryService {
     try {
       if (fs.existsSync(this.dictionaryPath)) {
         fs.unlinkSync(this.dictionaryPath);
-        console.log('Dictionary cleared on sign out');
+        Logger.debug('Dictionary cleared on sign out');
       }
     } catch (error) {
-      console.error('Failed to clear dictionary:', error);
+      Logger.error('Failed to clear dictionary:', error);
     }
   }
 }

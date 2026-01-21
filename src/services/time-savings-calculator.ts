@@ -1,4 +1,5 @@
 import { TranscriptionSession } from '../types/analytics';
+import { Logger } from '../core/logger';
 
 interface TimeSavingsCalculation {
   sessionTimeSaved: number; // milliseconds
@@ -127,7 +128,7 @@ export class TimeSavingsCalculator {
       
       // Debug log only for truly problematic calculations (negative savings or unrealistic values)
       if (savings.sessionTimeSaved < 0 || savings.sessionTimeSaved > 3600000) { // Less than 0 or more than 1 hour
-        console.log(`🔍 [Time Calc Debug] Session ${session.id}:`, {
+        Logger.debug(`🔍 [Time Calc Debug] Session ${session.id}:`, {
           mode: session.mode,
           characterCount: session.characterCount,
           audioLengthMs: session.metadata?.audioLengthMs,

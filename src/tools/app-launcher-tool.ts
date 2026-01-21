@@ -35,7 +35,7 @@ export const appLauncherTool = tool(
           
           try {
             await new Promise((resolve, reject) => {
-              exec(script, (error: any, stdout: any, stderr: any) => {
+              exec(script, (error: any, stdout: any, _stderr: any) => {
                 if (error) {
                   Logger.error('❌ [AppLauncher] Text input failed:', error);
                   reject(error);
@@ -171,13 +171,13 @@ function formatSuccessMessage(intent: any): string {
     case 'open_website':
       return `✅ Successfully opened ${intent.website}!`;
     
-    case 'search_web':
-      const platform = intent.searchEngine === 'google' ? 'Google' : 
+    case 'search_web': {
+      const platform = intent.searchEngine === 'google' ? 'Google' :
                       intent.searchEngine === 'youtube' ? 'YouTube' :
                       intent.searchEngine === 'spotify' ? 'Spotify' :
                       intent.searchEngine === 'amazon' ? 'Amazon' : 'the web';
       return `✅ Successfully searched for "${intent.query}" on ${platform}!`;
-    
+    }
     default:
       return '✅ Action completed successfully!';
   }
@@ -213,13 +213,13 @@ function formatIntentDescription(intent: any): string {
     case 'open_website':
       return `I would open the website: ${intent.website}`;
     
-    case 'search_web':
-      const platform = intent.searchEngine === 'google' ? 'Google' : 
+    case 'search_web': {
+      const platform = intent.searchEngine === 'google' ? 'Google' :
                       intent.searchEngine === 'youtube' ? 'YouTube' :
                       intent.searchEngine === 'spotify' ? 'Spotify' :
                       intent.searchEngine === 'amazon' ? 'Amazon' : 'the web';
       return `I would search for "${intent.query}" on ${platform}`;
-    
+    }
     default:
       return 'I would perform the requested action';
   }

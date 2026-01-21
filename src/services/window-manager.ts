@@ -1,6 +1,5 @@
-import { BrowserWindow, screen, nativeTheme } from 'electron';
+import { BrowserWindow, screen } from 'electron';
 import * as path from 'path';
-import * as fs from 'fs';
 import { spawnSync } from 'child_process';
 import { Logger } from '../core/logger';
 import { AppSettingsService } from './app-settings-service';
@@ -38,7 +37,7 @@ export class WindowManager {
       return existing;
     }
     
-    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    const { width: screenWidth, height: _screenHeight } = screen.getPrimaryDisplay().workAreaSize;
     
     const window = new BrowserWindow({
       width: 350,
@@ -422,7 +421,7 @@ export class WindowManager {
       this.windows.delete('dashboard');
     }
     
-    const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+    const { width: screenWidth, height: _screenHeight } = screen.getPrimaryDisplay().workAreaSize;
     
     const window = new BrowserWindow({
       width: 1200,
@@ -468,7 +467,7 @@ export class WindowManager {
         existing.close();
       }
       
-      const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize;
+      const { width: screenWidth, height: _screenHeight } = screen.getPrimaryDisplay().workAreaSize;
       
       // Small delay to ensure proper cleanup
       setTimeout(() => {
@@ -521,19 +520,19 @@ export class WindowManager {
   }
   
   closeWindow(type: WindowType): void {
-    console.log(`🔧 [WindowManager] Closing window: ${type}`);
+    Logger.debug(`🔧 [WindowManager] Closing window: ${type}`);
     const window = this.windows.get(type);
     if (window && !window.isDestroyed()) {
-      console.log(`🔧 [WindowManager] Window found and not destroyed, closing...`);
+      Logger.debug(`🔧 [WindowManager] Window found and not destroyed, closing...`);
       window.close();
-      console.log(`🔧 [WindowManager] Window ${type} closed successfully`);
+      Logger.debug(`🔧 [WindowManager] Window ${type} closed successfully`);
     } else if (window === null) {
-      console.log(`🔧 [WindowManager] Window ${type} was already closed and marked as null`);
+      Logger.debug(`🔧 [WindowManager] Window ${type} was already closed and marked as null`);
     } else {
-      console.log(`🔧 [WindowManager] Window ${type} not found or already destroyed`);
+      Logger.debug(`🔧 [WindowManager] Window ${type} not found or already destroyed`);
     }
     this.windows.delete(type);
-    console.log(`🔧 [WindowManager] Window ${type} removed from map`);
+    Logger.debug(`🔧 [WindowManager] Window ${type} removed from map`);
   }
   
   hideWindow(type: WindowType): void {

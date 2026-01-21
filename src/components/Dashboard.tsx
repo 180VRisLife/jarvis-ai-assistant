@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
 import Settings from './Settings';

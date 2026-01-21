@@ -1,4 +1,4 @@
-import { exec, spawn } from 'child_process';
+import { Logger } from '../core/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 const ffmpeg = require('fluent-ffmpeg');
@@ -15,7 +15,7 @@ function getFfmpegPath(): string {
     // Use system FFmpeg (most macOS systems have this available)
     return 'ffmpeg';
   } catch (error) {
-    console.warn('FFmpeg path resolution failed, using system ffmpeg:', error);
+    Logger.warning('FFmpeg path resolution failed, using system ffmpeg:', error);
     return 'ffmpeg';
   }
 }
@@ -49,7 +49,7 @@ export class AudioCompressor {
     
     return new Promise((resolve, reject) => {
       const ffmpegPath = getFfmpegPath();
-      console.log(`🔧 Using FFmpeg path: ${ffmpegPath}`);
+      Logger.debug(`🔧 Using FFmpeg path: ${ffmpegPath}`);
       
       try {
         // Create FFmpeg command with error handling
@@ -60,18 +60,21 @@ export class AudioCompressor {
         
         // Set quality based on format and preference
         switch (outputFormat) {
-          case 'mp3':
+          case 'mp3': {
             const mp3Quality = quality === 'high' ? '64k' : quality === 'medium' ? '48k' : '32k';
             ffmpegCommand.audioBitrate(mp3Quality).format('mp3');
             break;
-          case 'm4a':
+          }
+          case 'm4a': {
             const m4aQuality = quality === 'high' ? '64k' : quality === 'medium' ? '48k' : '32k';
             ffmpegCommand.audioBitrate(m4aQuality).format('mp4');
             break;
-          case 'ogg':
+          }
+          case 'ogg': {
             const oggQuality = quality === 'high' ? 6 : quality === 'medium' ? 4 : 2;
             ffmpegCommand.audioQuality(oggQuality).format('ogg');
             break;
+          }
         }
         
         ffmpegCommand
@@ -90,7 +93,7 @@ export class AudioCompressor {
                 format: outputFormat
               };
               
-              console.log(`🗜️ FFmpeg compression: ${originalSize} → ${compressedSize} bytes (${compressionRatio.toFixed(1)}% smaller) in ${compressionTime}ms`);
+              Logger.debug(`🗜️ FFmpeg compression: ${originalSize} → ${compressedSize} bytes (${compressionRatio.toFixed(1)}% smaller) in ${compressionTime}ms`);
               
               resolve({ file: outputFile, stats });
             } else {
@@ -98,7 +101,7 @@ export class AudioCompressor {
             }
           })
           .on('error', (err: Error) => {
-            console.warn('FFmpeg compression failed, returning original file:', err.message);
+            Logger.warning('FFmpeg compression failed, returning original file:', err.message);
             // Return original file instead of failing
             resolve({
               file: inputFile,
@@ -114,7 +117,7 @@ export class AudioCompressor {
           .save(outputFile);
           
       } catch (error) {
-        console.warn('FFmpeg setup failed, returning original file:', error);
+        Logger.warning('FFmpeg setup failed, returning original file:', error);
         // Return original file if FFmpeg setup fails
         resolve({
           file: inputFile,
@@ -133,7 +136,7 @@ export class AudioCompressor {
   /**
    * Get optimal compression settings based on audio duration and use case
    */
-  static getOptimalSettings(audioDurationMs: number, contentType: 'dictation' | 'conversation' = 'dictation') {
+  static getOptimalSettings(audioDurationMs: number, _contentType: 'dictation' | 'conversation' = 'dictation') {
     // For very short dictation, prioritize speed
     if (audioDurationMs < 5000) {
       return { format: 'm4a' as const, quality: 'low' as const };
@@ -161,7 +164,7 @@ export class AudioCompressor {
       { format: 'ogg', quality: 'medium' }
     ];
     
-    console.log('🧪 Starting compression benchmark...');
+    Logger.debug('🧪 Starting compression benchmark...');
     
     for (const { format, quality } of formats) {
       try {
@@ -175,16 +178,16 @@ export class AudioCompressor {
           // Ignore cleanup errors
         }
       } catch (error) {
-        console.warn(`Benchmark failed for ${format}/${quality}:`, error);
+        Logger.warning(`Benchmark failed for ${format}/${quality}:`, error);
       }
     }
     
     // Sort by best compression ratio
     results.sort((a, b) => b.compressionRatio - a.compressionRatio);
     
-    console.log('📊 Benchmark Results (sorted by compression ratio):');
+    Logger.debug('📊 Benchmark Results (sorted by compression ratio):');
     results.forEach((stat, i) => {
-      console.log(`${i + 1}. ${stat.format}: ${stat.compressionRatio.toFixed(1)}% smaller in ${stat.compressionTime}ms`);
+      Logger.debug(`${i + 1}. ${stat.format}: ${stat.compressionRatio.toFixed(1)}% smaller in ${stat.compressionTime}ms`);
     });
     
     return results;

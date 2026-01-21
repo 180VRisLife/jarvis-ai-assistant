@@ -2,19 +2,6 @@ import { Logger } from '../core/logger';
 import { AppSettingsService } from './app-settings-service';
 import { getEmailFormattingPrompt, getDictationPrompt } from '../prompts/prompt-manager';
 
-interface TextEnhancementRequest {
-  text: string;
-  context: {
-    type: string;
-    activeApp: string;
-  };
-  options?: {
-    enableDictionaryCorrections?: boolean;
-    enableContextFormatting?: boolean;
-    fastMode?: boolean;
-  };
-}
-
 interface TextEnhancementResponse {
   processedText: string;
   appliedCorrections: number;

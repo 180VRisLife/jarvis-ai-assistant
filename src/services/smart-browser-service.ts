@@ -1,7 +1,6 @@
 import { shell } from 'electron';
 import { Logger } from '../core/logger';
 import { AICommandParser, ParsedIntent } from './ai-command-parser';
-import { intelligentCommandParser, ParsedCommand } from './intelligent-command-parser';
 
 export interface BrowserAction {
   type: 'navigate' | 'search' | 'play_video' | 'play_music' | 'social_action';
@@ -164,7 +163,7 @@ export class SmartBrowserService {
           specificAction: 'home'
         };
 
-      case 'navigate':
+      case 'navigate': {
         // Enhanced URL construction to handle .com domains properly
         let navigateUrl = intent.url;
         if (!navigateUrl) {
@@ -181,16 +180,17 @@ export class SmartBrowserService {
             }
           }
         }
-        
+
         // Check if we have a specific handler for this platform
         const hasSpecificHandler = this.platformHandlers.has(intent.platform.toLowerCase());
-        
+
         return {
           type: 'navigate',
           platform: hasSpecificHandler ? intent.platform : 'web',
           url: navigateUrl,
           specificAction: 'navigate'
         };
+      }
     }
 
     return null;
@@ -440,7 +440,7 @@ export class SmartBrowserService {
   /**
    * Handle Facebook actions
    */
-  private async handleFacebook(action: BrowserAction): Promise<boolean> {
+  private async handleFacebook(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://www.facebook.com';
       await shell.openExternal(url);
@@ -455,7 +455,7 @@ export class SmartBrowserService {
   /**
    * Handle Instagram actions
    */
-  private async handleInstagram(action: BrowserAction): Promise<boolean> {
+  private async handleInstagram(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://www.instagram.com';
       await shell.openExternal(url);
@@ -470,7 +470,7 @@ export class SmartBrowserService {
   /**
    * Handle Twitter/X actions
    */
-  private async handleTwitter(action: BrowserAction): Promise<boolean> {
+  private async handleTwitter(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://x.com';
       await shell.openExternal(url);
@@ -485,7 +485,7 @@ export class SmartBrowserService {
   /**
    * Handle LinkedIn actions
    */
-  private async handleLinkedIn(action: BrowserAction): Promise<boolean> {
+  private async handleLinkedIn(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://www.linkedin.com';
       await shell.openExternal(url);
@@ -503,7 +503,7 @@ export class SmartBrowserService {
   private async handleAmazon(action: BrowserAction): Promise<boolean> {
     try {
       let url: string;
-      
+
       if (action.query) {
         url = `https://www.amazon.com/s?k=${encodeURIComponent(action.query)}`;
         Logger.success(`🛒 Amazon: Searching for "${action.query}"`);
@@ -511,7 +511,7 @@ export class SmartBrowserService {
         url = 'https://www.amazon.com';
         Logger.success('🛒 Amazon: Opened homepage');
       }
-      
+
       await shell.openExternal(url);
       return true;
     } catch (error) {
@@ -523,7 +523,7 @@ export class SmartBrowserService {
   /**
    * Handle Netflix actions
    */
-  private async handleNetflix(action: BrowserAction): Promise<boolean> {
+  private async handleNetflix(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://www.netflix.com';
       await shell.openExternal(url);
@@ -538,7 +538,7 @@ export class SmartBrowserService {
   /**
    * Handle Gmail actions
    */
-  private async handleGmail(action: BrowserAction): Promise<boolean> {
+  private async handleGmail(_action: BrowserAction): Promise<boolean> {
     try {
       const url = 'https://gmail.com';
       await shell.openExternal(url);

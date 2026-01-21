@@ -46,8 +46,8 @@ export class CloudLLMService {
     }
 
     const prompt = this.buildPrompt(transcript, context);
-    console.log('🎯 Manual help requested for:', transcript.substring(0, 50) + '...');
-    console.log('📋 Context provided:', context.length, 'items');
+    Logger.debug('🎯 Manual help requested for:', transcript.substring(0, 50) + '...');
+    Logger.debug('📋 Context provided:', context.length, 'items');
 
     try {
       if (this.useOllama) {
@@ -55,17 +55,17 @@ export class CloudLLMService {
           await this.streamOllama(prompt, callbacks);
           return;
         } catch (ollamaError) {
-          console.error('Ollama failed, falling back to Gemini:', ollamaError);
+          Logger.error('Ollama failed, falling back to Gemini:', ollamaError);
         }
       }
 
       await this.streamGemini(prompt, callbacks);
     } catch (error) {
-      console.error('Gemini failed, falling back to Claude:', error);
+      Logger.error('Gemini failed, falling back to Claude:', error);
       try {
         await this.streamClaude(prompt, callbacks);
       } catch (claudeError) {
-        console.error('Claude failed, falling back to OpenAI:', claudeError);
+        Logger.error('Claude failed, falling back to OpenAI:', claudeError);
         try {
           await this.streamOpenAI(prompt, callbacks);
         } catch (openaiError) {

@@ -1,4 +1,4 @@
-import { exec, spawn } from 'child_process';
+import { exec } from 'child_process';
 import { promisify } from 'util';
 import { Logger } from '../core/logger';
 import { shell } from 'electron';
@@ -462,7 +462,7 @@ export class AppLauncherService {
     }
     
     // Keyword match
-    for (const [key, app] of this.installedApps) {
+    for (const [_key, app] of this.installedApps) {
       if (app.keywords.some(keyword => keyword.includes(lowerQuery) || lowerQuery.includes(keyword))) {
         return app;
       }

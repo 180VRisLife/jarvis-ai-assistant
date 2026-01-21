@@ -14,7 +14,7 @@ const TranscriptionStatus: React.FC<TranscriptionStatusProps> = ({
   onDismiss 
 }) => {
   const [timeElapsed, setTimeElapsed] = useState(0);
-  const [showDetails, setShowDetails] = useState(false);
+  const [_showDetails, _setShowDetails] = useState(false);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

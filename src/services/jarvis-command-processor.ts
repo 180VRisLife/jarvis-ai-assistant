@@ -3,7 +3,6 @@ import { captureScreen } from '../tools/vision-tool';
 import { clipboard, nativeImage } from 'electron';
 import { spawn } from 'child_process';
 import { readFileSync } from 'fs';
-import { WindowManager } from './window-manager';
 import { AnalysisOverlayService } from './analysis-overlay-service';
 
 export interface JarvisCommand {
@@ -62,7 +61,7 @@ export class JarvisCommandProcessor {
   /**
    * Process a Jarvis command and return formatted output
    */
-  static async processJarvisCommand(command: JarvisCommand): Promise<JarvisOutput> {
+  static async processJarvisCommand(_command: JarvisCommand): Promise<JarvisOutput> {
     Logger.info(`🎯 [Jarvis] Processing command: ${command.isJarvisCommand ? 'Jarvis' : 'Regular'}, Screenshot: ${command.needsScreenshot}`);
     
     try {
@@ -86,7 +85,7 @@ export class JarvisCommandProcessor {
   /**
    * Process screenshot command
    */
-  private static async processScreenshotCommand(command: JarvisCommand): Promise<JarvisOutput> {
+  private static async processScreenshotCommand(_command: JarvisCommand): Promise<JarvisOutput> {
     Logger.info('📸 [Jarvis] Processing screenshot command...');
     
     try {
@@ -129,7 +128,7 @@ export class JarvisCommandProcessor {
   /**
    * Process regular Jarvis analysis command (no screenshot)
    */
-  private static async processAnalysisCommand(command: JarvisCommand): Promise<JarvisOutput> {
+  private static async processAnalysisCommand(_command: JarvisCommand): Promise<JarvisOutput> {
     Logger.info('🎯 [Jarvis] Processing analysis command...');
     
     // For non-screenshot Jarvis commands, just copy the transcription
@@ -146,7 +145,7 @@ export class JarvisCommandProcessor {
   /**
    * Process plain transcription (non-Jarvis command)
    */
-  private static processPlainCommand(command: JarvisCommand): JarvisOutput {
+  private static processPlainCommand(_command: JarvisCommand): JarvisOutput {
     Logger.info('💬 [Jarvis] Processing plain transcription...');
     
     // For non-Jarvis commands, just return the plain text

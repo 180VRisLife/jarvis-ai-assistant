@@ -1,8 +1,9 @@
+/* eslint-disable no-console */
 import React, { useState } from 'react';
 import FnKeyTutorialScreen from './FnKeyTutorialScreen';
 import VoiceTranscriptionTutorialScreen from './VoiceTranscriptionTutorialScreen';
 import EmailDictationScreen from './EmailDictationScreen';
-import { theme, themeComponents } from '../styles/theme';
+import { themeComponents } from '../styles/theme';
 
 /**
  * Preview component for testing the new tutorial screens

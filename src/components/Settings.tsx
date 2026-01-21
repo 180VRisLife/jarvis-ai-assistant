@@ -1,5 +1,6 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
-import { theme, themeComponents } from '../styles/theme';
+import { theme } from '../styles/theme';
 import { defaultDictationPrompt, defaultEmailFormattingPrompt, defaultAssistantPrompt } from '../prompts/prompts';
 
 // Tab types
@@ -203,7 +204,7 @@ const Settings: React.FC = () => {
           // Patch: If any prompt is empty string, update settings file to use default
           const electronAPI = (window as any).electronAPI;
           let needsPatch = false;
-          let patchedPrompts: any = {};
+          const patchedPrompts: any = {};
           if (!appSettings.customDictationPrompt || !appSettings.customDictationPrompt.trim()) {
             setCustomDictationPrompt(defaultDictationPrompt);
             patchedPrompts.customDictationPrompt = defaultDictationPrompt;

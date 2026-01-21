@@ -237,12 +237,8 @@ export class SettingsIPCHandlers {
           if (baseUrl.includes('localhost')) {
             const fallbackUrl = baseUrl.replace('localhost', '127.0.0.1');
             Logger.info(`[SettingsIPC] Localhost failed, trying fallback: ${fallbackUrl}`);
-            try {
-              const models = await tryFetchModels(fallbackUrl);
-              return { success: true, models: models };
-            } catch (secondError) {
-              throw secondError;
-            }
+            const models = await tryFetchModels(fallbackUrl);
+            return { success: true, models: models };
           }
           throw firstError;
         }

@@ -182,7 +182,7 @@ async function listAndAnalyzeFiles(dirPath: string): Promise<string> {
 /**
  * Organize files in a directory by creating appropriate folders and moving files
  */
-async function organizeFiles(dirPath: string, orgType: string = 'by_type'): Promise<string> {
+async function organizeFiles(dirPath: string, _orgType: string = 'by_type'): Promise<string> {
   try {
     const items = await fs.readdir(dirPath);
     const fileOperations: { file: string; targetCategory: string; targetPath: string }[] = [];

@@ -159,7 +159,7 @@ export class StreamingTranscriptionService {
       // Connection established
     });
 
-    this.streamingTranscriber.on('disconnected', (code, reason) => {
+    this.streamingTranscriber.on('disconnected', (_code, _reason) => {
       // Connection closed
     });
 

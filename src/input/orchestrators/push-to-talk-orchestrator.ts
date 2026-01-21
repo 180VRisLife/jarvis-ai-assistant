@@ -68,7 +68,7 @@ export class PushToTalkOrchestrator {
    * Start the push-to-talk recording session
    */
   async start(): Promise<void> {
-    console.log('🎬 [Orchestrator] start() called - isActive:', this.stateManager.isActive());
+    Logger.debug('🎬 [Orchestrator] start() called - isActive:', this.stateManager.isActive());
     if (this.stateManager.isActive()) {
       Logger.warning('⚠️ [Orchestrator] Already active, ignoring start request');
       return;
@@ -123,7 +123,7 @@ export class PushToTalkOrchestrator {
    * Stop recording and process the complete flow
    */
   async stop(): Promise<void> {
-    console.log('🛑 [Orchestrator] stop() called - isActive:', this.stateManager.isActive());
+    Logger.debug('🛑 [Orchestrator] stop() called - isActive:', this.stateManager.isActive());
     if (!this.stateManager.isActive()) {
       Logger.warning('⚠️ [Orchestrator] No active session to stop');
       return;
@@ -436,7 +436,7 @@ export class PushToTalkOrchestrator {
     const sessionId = this.stateManager.getCurrentSessionId();
     const session = this.stateManager.getActiveSession();
 
-    console.log('📊 [DEBUG] saveAnalytics called:', {
+    Logger.debug('📊 [DEBUG] saveAnalytics called:', {
       sessionId,
       hasSession: !!session,
       textLength: text.length,
@@ -449,16 +449,16 @@ export class PushToTalkOrchestrator {
 
       setImmediate(async () => {
         try {
-          console.log('📊 [DEBUG] About to call analyticsManager.endSession');
+          Logger.debug('📊 [DEBUG] About to call analyticsManager.endSession');
           await this.analyticsManager.endSession(text, session.duration, modelUsed, mode);
           Logger.debug(`📊 [Orchestrator] Analytics saved for session: ${sessionId}`);
         } catch (error) {
           Logger.error(`📊 [Orchestrator] Analytics save failed for session: ${sessionId}:`, error);
-          console.error('📊 [DEBUG] Analytics error:', error);
+          Logger.error('📊 [DEBUG] Analytics error:', error);
         }
       });
     } else {
-      console.log('📊 [DEBUG] saveAnalytics skipped - missing data:', {
+      Logger.debug('📊 [DEBUG] saveAnalytics skipped - missing data:', {
         hasSessionId: !!sessionId,
         hasSession: !!session,
         hasText: !!text

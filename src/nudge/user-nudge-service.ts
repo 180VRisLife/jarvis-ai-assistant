@@ -1,7 +1,11 @@
 import { TypingDetector } from './typing-detector';
+import { Logger } from '../core/logger';
 import { NudgeScheduler } from './nudge-scheduler';
+import { Logger } from '../core/logger';
 import { NudgeWindow } from './nudge-window';
+import { Logger } from '../core/logger';
 import { NudgeConfigManager } from './nudge-config-manager';
+import { Logger } from '../core/logger';
 
 interface NudgeConfig {
   enabled: boolean;
@@ -60,18 +64,18 @@ export class UserNudgeService {
   private startTypingDetection(): void {
     const success = this.typingDetector.start(this.config);
     if (!success) {
-      console.log('🔔 [Nudge] Failed to start typing detection');
+      Logger.debug('🔔 [Nudge] Failed to start typing detection');
     }
   }
 
   private onTypingDetected(): void {
     if (!this.config.enabled || this.config.dismissedPermanently) {
-      console.log('🔔 [Nudge] Typing detected but nudges are DISABLED - ignoring');
+      Logger.debug('🔔 [Nudge] Typing detected but nudges are DISABLED - ignoring');
       return;
     }
 
     if (!this.typingDetector.isRunning()) {
-      console.log('🔔 [Nudge] Typing detected but service is not running - ignoring');
+      Logger.debug('🔔 [Nudge] Typing detected but service is not running - ignoring');
       return;
     }
 
@@ -93,7 +97,7 @@ export class UserNudgeService {
         this.showDelightfulNudge();
       }
     } else {
-      console.log(`🔔 [Nudge] Already nudged in this session - respecting user's choice`);
+      Logger.debug(`🔔 [Nudge] Already nudged in this session - respecting user's choice`);
     }
 
     this.configManager.saveActivity(this.activity);
@@ -101,16 +105,16 @@ export class UserNudgeService {
 
   private async showDelightfulNudge(): Promise<void> {
     if (!this.scheduler.shouldShowNudge(this.config, this.activity)) {
-      console.log('🔔 [Nudge] Nudge conditions not met, skipping');
+      Logger.debug('🔔 [Nudge] Nudge conditions not met, skipping');
       return;
     }
 
     if (this.window.isShowing()) {
-      console.log('🔔 [Nudge] Nudge already showing, skipping');
+      Logger.debug('🔔 [Nudge] Nudge already showing, skipping');
       return;
     }
 
-    console.log('🔔 [Nudge] 🎉 Showing delightful nudge!');
+    Logger.debug('🔔 [Nudge] 🎉 Showing delightful nudge!');
     
     this.activity.nudgedInCurrentSession = true;
     this.activity.totalNudgesShown++;
@@ -118,9 +122,9 @@ export class UserNudgeService {
     
     try {
       await this.window.createWindow();
-      console.log('🔔 [Nudge] ✨ Nudge displayed successfully');
+      Logger.debug('🔔 [Nudge] ✨ Nudge displayed successfully');
     } catch (error) {
-      console.error('🔔 [Nudge] Error creating nudge window:', error);
+      Logger.error('🔔 [Nudge] Error creating nudge window:', error);
     }
     
     this.configManager.saveActivity(this.activity);
@@ -128,7 +132,7 @@ export class UserNudgeService {
 
   // Public API methods
   dismissNudge(): void {
-    console.log('🔔 [Nudge] Nudge dismissed (user will try Jarvis)');
+    Logger.debug('🔔 [Nudge] Nudge dismissed (user will try Jarvis)');
     this.window.hide();
     
     setTimeout(() => {
@@ -137,7 +141,7 @@ export class UserNudgeService {
   }
 
   dismissNudgeExplicitly(): void {
-    console.log('🔔 [Nudge] Nudge explicitly dismissed');
+    Logger.debug('🔔 [Nudge] Nudge explicitly dismissed');
     this.window.hide();
     
     this.activity.lastJarvisUsage = Date.now();
@@ -149,7 +153,7 @@ export class UserNudgeService {
   }
 
   resetNudgeCounter(): void {
-    console.log('🔔 [Nudge] Resetting nudge counter');
+    Logger.debug('🔔 [Nudge] Resetting nudge counter');
     this.activity = this.configManager.resetDailyCount(this.activity);
   }
 
@@ -189,7 +193,7 @@ export class UserNudgeService {
   }
 
   snooze(): void {
-    console.log(`🔔 [Nudge] Snoozing for ${this.config.snoozeTime} minutes`);
+    Logger.debug(`🔔 [Nudge] Snoozing for ${this.config.snoozeTime} minutes`);
     this.window.hide();
     this.activity = this.configManager.snooze(this.activity, this.config.snoozeTime);
     
@@ -211,9 +215,9 @@ export class UserNudgeService {
   }
 
   updateNudgeSettings(settings: Partial<NudgeConfig>): void {
-    console.log('🔔 [Nudge] Updating nudge settings:', settings);
+    Logger.debug('🔔 [Nudge] Updating nudge settings:', settings);
     this.updateConfig(settings);
-    console.log('🔔 [Nudge] Settings updated successfully');
+    Logger.debug('🔔 [Nudge] Settings updated successfully');
   }
 
   debugStatus(): void {
@@ -221,7 +225,7 @@ export class UserNudgeService {
   }
 
   forceDisable(): void {
-    console.log('🚫 [Nudge] FORCE DISABLING nudges...');
+    Logger.debug('🚫 [Nudge] FORCE DISABLING nudges...');
     
     this.config.enabled = false;
     this.config.dismissedPermanently = false;
@@ -231,7 +235,7 @@ export class UserNudgeService {
     this.window.hide();
     this.scheduler.clearTimers();
     
-    console.log('✅ [Nudge] Nudges force-disabled successfully');
+    Logger.debug('✅ [Nudge] Nudges force-disabled successfully');
     this.debugStatus();
   }
 
@@ -239,6 +243,6 @@ export class UserNudgeService {
     this.typingDetector.stop();
     this.scheduler.clearTimers();
     this.window.destroy();
-    console.log('🔔 [Nudge] Service destroyed');
+    Logger.debug('🔔 [Nudge] Service destroyed');
   }
 }

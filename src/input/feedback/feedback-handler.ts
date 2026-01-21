@@ -72,7 +72,7 @@ export class FeedbackHandler {
   /**
    * Handle recording start feedback
    */
-  private async handleRecordingStart(event: FeedbackEvent): Promise<void> {
+  private async handleRecordingStart(_event: FeedbackEvent): Promise<void> {
     if (this.options.showNotifications) {
       Logger.info('🎤 [Feedback] Recording started');
     }
@@ -84,7 +84,7 @@ export class FeedbackHandler {
   /**
    * Handle recording stop feedback
    */
-  private async handleRecordingStop(event: FeedbackEvent): Promise<void> {
+  private async handleRecordingStop(_event: FeedbackEvent): Promise<void> {
     if (this.options.showNotifications) {
       Logger.info('⏹️ [Feedback] Recording stopped, processing...');
     }

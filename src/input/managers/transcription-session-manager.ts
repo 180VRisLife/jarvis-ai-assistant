@@ -149,7 +149,7 @@ export class TranscriptionSessionManager {
   /**
    * Handle streaming transcription completion
    */
-  private async handleStreamingTranscription(transcriptionId: string, keyReleaseTime: number): Promise<TranscriptionResult | null> {
+  private async handleStreamingTranscription(_transcriptionId: string, _keyReleaseTime: number): Promise<TranscriptionResult | null> {
     try {
       Logger.info('🌊 [Transcription] Finishing streaming transcription...');
       
@@ -185,7 +185,7 @@ export class TranscriptionSessionManager {
       Logger.performance('🌊 [Transcription] Streaming finish completed', streamingFinishTime);
       
       // Use streaming result or fallback
-      let resultText = finalText || this.streamingFinalText;
+      const resultText = finalText || this.streamingFinalText;
       
       if (!resultText) {
         Logger.warning('🌊 [Transcription] No streaming result available');
@@ -223,7 +223,7 @@ export class TranscriptionSessionManager {
   /**
    * Handle traditional (non-streaming) transcription
    */
-  private async handleTraditionalTranscription(audioSessionData: AudioSessionData, transcriptionId: string, keyReleaseTime: number): Promise<TranscriptionResult | null> {
+  private async handleTraditionalTranscription(audioSessionData: AudioSessionData, transcriptionId: string, _keyReleaseTime: number): Promise<TranscriptionResult | null> {
     Logger.info(`🎙️ [Transcription] Starting traditional transcription - ID: ${transcriptionId}`);
     
     const { buffer: audioBuffer, duration } = audioSessionData;

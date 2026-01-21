@@ -56,7 +56,7 @@ export class TranscriptionManager {
    * Start transcription process
    */
   async transcribe(options: TranscriptionOptions, callbacks: TranscriptionCallbacks): Promise<void> {
-    const { useStreaming, audioBuffer, duration, transcriptionId, keyReleaseTime } = options;
+    const { useStreaming, _audioBuffer, _duration, transcriptionId, _keyReleaseTime } = options;
     
     this.currentTranscriptionId = transcriptionId;
     this.isTranscribing = true;

@@ -23,10 +23,10 @@ interface WelcomeScreenProps {
   onNameChange?: (name: string) => void;
 }
 
-const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNext, onNameChange }) => {
+const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onNext: _onNext, onNameChange }) => {
   const { user } = useAuth();
   const [name, setName] = useState('');
-  const [saving, setSaving] = useState(false);
+  const [_saving, setSaving] = useState(false);
 
   // Load existing name on mount
   useEffect(() => {
@@ -129,7 +129,7 @@ interface PermissionsScreenProps {
   onCorePermissionsChange?: (coreGranted: boolean) => void;
 }
 
-const PermissionsScreen: React.FC<PermissionsScreenProps> = ({ onNext, onPermissionsChange, onCorePermissionsChange }) => {
+const PermissionsScreen: React.FC<PermissionsScreenProps> = ({ onNext: _onNext, onPermissionsChange, onCorePermissionsChange }) => {
   const [permissions, setPermissions] = useState({
     microphone: false,
     accessibility: false
@@ -209,7 +209,7 @@ const PermissionsScreen: React.FC<PermissionsScreenProps> = ({ onNext, onPermiss
     }
   };
 
-  const allPermissionsGranted = Object.values(permissions).every(Boolean);
+  const _allPermissionsGranted = Object.values(permissions).every(Boolean);
 
   return (
     <div className="w-full max-w-2xl mx-auto px-6">
@@ -323,7 +323,7 @@ const PermissionsScreen: React.FC<PermissionsScreenProps> = ({ onNext, onPermiss
   );
 };
 
-const FeatureTourScreen: React.FC<{ onNext: () => void }> = ({ onNext }) => (
+const FeatureTourScreen: React.FC<{ onNext: () => void }> = ({ onNext: _onNext }) => (
   <div className="w-full max-w-2xl mx-auto px-6">
     {/* Header */}
     <div className="text-center mb-10">
@@ -391,12 +391,12 @@ const FeatureTourScreen: React.FC<{ onNext: () => void }> = ({ onNext }) => (
 
 const OnboardingFlow: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
   const [currentStep, setCurrentStep] = useState(0);
-  const [allPermissionsGranted, setAllPermissionsGranted] = useState(false);
+  const [_allPermissionsGranted, setAllPermissionsGranted] = useState(false);
   const [corePermissionsGranted, setCorePermissionsGranted] = useState(false);
-  const [hasApiKeys, setHasApiKeys] = useState(false);
+  const [_hasApiKeys, setHasApiKeys] = useState(false);
   const [userName, setUserName] = useState('');
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const { user, loading } = useAuth();
+  const { user: _user, loading } = useAuth();
 
   // Load existing userName on mount
   useEffect(() => {

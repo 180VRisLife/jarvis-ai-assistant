@@ -128,7 +128,7 @@ export class OutputManager {
   /**
    * Execute the actual output using the specified method
    */
-  private async executeOutput(text: string, method: 'fast' | 'clipboard' | 'keystroke', modelUsed: string): Promise<void> {
+  private async executeOutput(text: string, method: 'fast' | 'clipboard' | 'keystroke', _modelUsed: string): Promise<void> {
     Logger.debug(`📋 [Output] Using ${method} method for text: "${text}"`);
 
     switch (method) {

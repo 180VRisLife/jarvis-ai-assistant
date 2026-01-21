@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { theme } from '../styles/theme';
-// @ts-ignore
+// @ts-expect-error - canvas-confetti lacks type definitions
 import confetti from 'canvas-confetti';
 
 interface SuccessModalProps {
@@ -34,9 +34,9 @@ export function SuccessModal({
       const animationEnd = Date.now() + duration;
       const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
 
-      function randomInRange(min: number, max: number) {
+      const randomInRange = (min: number, max: number) => {
         return Math.random() * (max - min) + min;
-      }
+      };
 
       const interval = setInterval(function() {
         const timeLeft = animationEnd - Date.now();

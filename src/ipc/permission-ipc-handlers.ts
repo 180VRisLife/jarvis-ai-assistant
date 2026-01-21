@@ -31,19 +31,19 @@ export class PermissionIPCHandlers {
     ipcMain.handle('check-permission-status', async (_, permission: string) => {
       try {
         switch (permission) {
-          case 'microphone':
+          case 'microphone': {
             const micStatus = systemPreferences.getMediaAccessStatus('microphone');
             Logger.info(`[Permissions] Microphone status: ${micStatus}`);
             return { status: micStatus, granted: micStatus === 'granted' };
-            
-          case 'accessibility':
+          }
+          case 'accessibility': {
             const accessibilityStatus = systemPreferences.isTrustedAccessibilityClient(false);
             Logger.info(`[Permissions] Accessibility status: ${accessibilityStatus}`);
             return { status: accessibilityStatus ? 'granted' : 'denied', granted: accessibilityStatus };
-            
+          }
           case 'notifications':
             return { status: 'unknown', granted: false };
-            
+
           default:
             Logger.warning(`[Permissions] Unknown permission type: ${permission}`);
             return { status: 'unknown', granted: false };

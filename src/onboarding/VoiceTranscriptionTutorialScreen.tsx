@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
 import { theme } from '../styles/theme';
 
@@ -5,7 +6,7 @@ interface VoiceTranscriptionTutorialScreenProps {
   onNext: () => void;
 }
 
-const VoiceTranscriptionTutorialScreen: React.FC<VoiceTranscriptionTutorialScreenProps> = ({ onNext }) => {
+const VoiceTranscriptionTutorialScreen: React.FC<VoiceTranscriptionTutorialScreenProps> = ({ onNext: _onNext }) => {
   const [fnKeyPressed, setFnKeyPressed] = useState(false);
   const [hasSpoken, setHasSpoken] = useState(false);
   const [transcriptText, setTranscriptText] = useState('');

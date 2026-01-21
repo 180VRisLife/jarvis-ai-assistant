@@ -122,7 +122,7 @@ export class UniversalKeyService {
         const now = Date.now();
         const keyUpper = keyName.toUpperCase();
 
-        console.log(`🎹 [NativeEvent] Received: ${event} for ${keyName}`);
+        Logger.debug(`🎹 [NativeEvent] Received: ${event} for ${keyName}`);
 
         if (event === `${keyUpper}_KEY_DOWN`) {
           // Debounce key down events to prevent double triggers

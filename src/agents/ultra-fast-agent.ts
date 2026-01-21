@@ -9,9 +9,9 @@ export class UltraFastJarvisAgent {
     this.openaiKey = openaiKey;
   }
 
-  async processQuery(query: string, userContext?: any): Promise<string> {
+  async processQuery(query: string, _userContext?: any): Promise<string> {
     const startTime = Date.now();
-    console.log(`⚡ [UltraFast] Processing: "${query}"`);
+    Logger.debug(`⚡ [UltraFast] Processing: "${query}"`);
 
     // Simple routing based on keywords - much faster than LLM-based tool selection
     const route = this.routeQuery(query);
@@ -30,16 +30,16 @@ export class UltraFastJarvisAgent {
           
         case 'text_generation':
         default:
-          result = await this.generateText(query, userContext);
+          result = await this.generateText(query, _userContext);
           break;
       }
 
       const time = Date.now() - startTime;
-      console.log(`⚡ [UltraFast] Completed in ${time}ms`);
+      Logger.debug(`⚡ [UltraFast] Completed in ${time}ms`);
       return result;
       
     } catch (error) {
-      console.error('❌ [UltraFast] Error:', error);
+      Logger.error('❌ [UltraFast] Error:', error);
       return "I encountered an error. Please try again.";
     }
   }
@@ -70,8 +70,7 @@ export class UltraFastJarvisAgent {
     return { type: 'text_generation', params: {} };
   }
 
-  private async generateText(query: string, userContext?: any): Promise<string> {
-    const prompt = this.buildTextPrompt(query, userContext);
+  private async generateText(query: string, _userContext?: any): Promise<string> {
     
     // Direct OpenAI API call - no LangChain overhead
     const response = await fetch('https://api.openai.com/v1/chat/completions', {

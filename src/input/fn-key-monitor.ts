@@ -1,5 +1,7 @@
 import * as path from 'path';
+import { Logger } from '../core/logger';
 import * as fs from 'fs';
+import { Logger } from '../core/logger';
 
 export class FnKeyMonitor {
   private nativeModule: any = null;
@@ -14,7 +16,7 @@ export class FnKeyMonitor {
 
   start(): boolean {
     if (this.isActive) {
-      try { console.log('Fn key monitor already running'); } catch (e) { /* ignore */ }
+      try { Logger.debug('Fn key monitor already running'); } catch (e) { /* ignore */ }
       return false;
     }
 
@@ -22,24 +24,24 @@ export class FnKeyMonitor {
       // Load the native module
       const fnKeyMonitorPath = this.findNativeModule();
       if (!fnKeyMonitorPath) {
-        console.error('Fn key monitor native module not found');
+        Logger.error('Fn key monitor native module not found');
         return false;
       }
 
-      console.log('Loading Fn key monitor native module from:', fnKeyMonitorPath);
+      Logger.debug('Loading Fn key monitor native module from:', fnKeyMonitorPath);
       
       // Use eval('require') to bypass webpack's require interception
       const nodeRequire = eval('require');
       try {
         this.nativeModule = nodeRequire(fnKeyMonitorPath);
-        console.log('✅ [FnKeyMonitor] Native module loaded successfully');
+        Logger.debug('✅ [FnKeyMonitor] Native module loaded successfully');
       } catch (loadError) {
-        console.error('❌ [FnKeyMonitor] Failed to load native module:', loadError);
+        Logger.error('❌ [FnKeyMonitor] Failed to load native module:', loadError);
         return false;
       }
       
       if (!this.nativeModule || !this.nativeModule.startMonitoring) {
-        console.error('Invalid native module - missing startMonitoring method');
+        Logger.error('Invalid native module - missing startMonitoring method');
         return false;
       }
 
@@ -47,14 +49,14 @@ export class FnKeyMonitor {
       if (this.nativeModule.checkAccessibilityPermissions) {
         const hasPermissions = this.nativeModule.checkAccessibilityPermissions();
         if (!hasPermissions) {
-          console.error('❌ Accessibility permission required! Please add this app to Accessibility in System Preferences > Privacy & Security');
+          Logger.error('❌ Accessibility permission required! Please add this app to Accessibility in System Preferences > Privacy & Security');
           return false;
         }
       }
 
       // Start monitoring with callback
       const success = this.nativeModule.startMonitoring((event: string) => {
-        console.log('🎯 [FnKeyMonitor] Native event received:', event);
+        Logger.debug('🎯 [FnKeyMonitor] Native event received:', event);
         
         if (event === 'FN_KEY_DOWN') {
           this.onKeyDown?.();
@@ -65,15 +67,15 @@ export class FnKeyMonitor {
 
       if (success) {
         this.isActive = true;
-        console.log('✅ Fn key push-to-talk monitoring started');
-        console.log('📖 Usage: Hold Fn key to record, release to transcribe and auto-paste');
+        Logger.debug('✅ Fn key push-to-talk monitoring started');
+        Logger.debug('📖 Usage: Hold Fn key to record, release to transcribe and auto-paste');
         return true;
       } else {
-        console.error('❌ Failed to start Fn key monitoring');
+        Logger.error('❌ Failed to start Fn key monitoring');
         return false;
       }
     } catch (error) {
-      console.error('Failed to start Fn key monitor:', error);
+      Logger.error('Failed to start Fn key monitor:', error);
       return false;
     }
   }
@@ -97,20 +99,20 @@ export class FnKeyMonitor {
       path.join(process.resourcesPath, 'app.asar.unpacked/dist/fn_key_monitor.node'),
     ];
 
-    console.log('🔍 [FnKeyMonitor] Searching for native module...');
-    console.log('🔍 [FnKeyMonitor] __dirname:', __dirname);
-    console.log('🔍 [FnKeyMonitor] process.cwd():', process.cwd());
-    console.log('🔍 [FnKeyMonitor] process.resourcesPath:', process.resourcesPath);
+    Logger.debug('🔍 [FnKeyMonitor] Searching for native module...');
+    Logger.debug('🔍 [FnKeyMonitor] __dirname:', __dirname);
+    Logger.debug('🔍 [FnKeyMonitor] process.cwd():', process.cwd());
+    Logger.debug('🔍 [FnKeyMonitor] process.resourcesPath:', process.resourcesPath);
 
     for (const modulePath of possiblePaths) {
-      console.log(`🔍 [FnKeyMonitor] Checking path: ${modulePath}`);
+      Logger.debug(`🔍 [FnKeyMonitor] Checking path: ${modulePath}`);
       if (fs.existsSync(modulePath)) {
-        console.log(`✅ [FnKeyMonitor] Found native module at: ${modulePath}`);
+        Logger.debug(`✅ [FnKeyMonitor] Found native module at: ${modulePath}`);
         return modulePath;
       }
     }
 
-    console.error('❌ [FnKeyMonitor] Native module not found in any of the searched paths');
+    Logger.error('❌ [FnKeyMonitor] Native module not found in any of the searched paths');
     return null;
   }
 
@@ -125,9 +127,9 @@ export class FnKeyMonitor {
       }
       this.isActive = false;
       this.nativeModule = null;
-      console.log('Fn key monitoring stopped');
+      Logger.debug('Fn key monitoring stopped');
     } catch (error) {
-      console.error('Error stopping Fn key monitor:', error);
+      Logger.error('Error stopping Fn key monitor:', error);
     }
   }
 }

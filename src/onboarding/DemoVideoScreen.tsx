@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
 import YouTubeEmbed from '../components/YouTubeEmbed';
-import { theme, themeComponents } from '../styles/theme';
+import { theme } from '../styles/theme';
 
 interface DemoVideoScreenProps {
   onNext: () => void;
 }
 
-const DemoVideoScreen: React.FC<DemoVideoScreenProps> = ({ onNext }) => {
+const DemoVideoScreen: React.FC<DemoVideoScreenProps> = ({ onNext: _onNext }) => {
   const [hasWatched, setHasWatched] = useState(false);
 
   // Extract video ID from YouTube URL

@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { theme } from '../styles/theme';
 
@@ -5,7 +6,7 @@ interface EmailDictationScreenProps {
   onNext: () => void;
 }
 
-const EmailDictationScreen: React.FC<EmailDictationScreenProps> = ({ onNext }) => {
+const EmailDictationScreen: React.FC<EmailDictationScreenProps> = ({ onNext: _onNext }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcriptionText, setTranscriptionText] = useState('');
@@ -39,7 +40,7 @@ const EmailDictationScreen: React.FC<EmailDictationScreenProps> = ({ onNext }) =
   }, []);
 
   // Optimized state reset function
-  const resetStates = useCallback((withTranscription = false) => {
+  const _resetStates = useCallback((withTranscription = false) => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     timeoutRef.current = setTimeout(() => {
       setIsProcessing(false);

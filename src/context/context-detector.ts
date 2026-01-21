@@ -1,4 +1,5 @@
 import { AppContext } from '../interfaces/transcription';
+import { Logger } from '../core/logger';
 
 export class ContextDetector {
   private contextCache: AppContext | null = null;
@@ -138,7 +139,7 @@ export class ContextDetector {
     
     if (isEmailApp || isEmailWindow) {
       // Debug log for email detection
-      console.log(`📧 Email context detected: app="${app}", title="${title}", emailApp=${isEmailApp}, emailWindow=${isEmailWindow}`);
+      Logger.debug(`📧 Email context detected: app="${app}", title="${title}", emailApp=${isEmailApp}, emailWindow=${isEmailWindow}`);
       return 'email';
     }
     
@@ -178,12 +179,12 @@ export class ContextDetector {
     const isElectronCodeEditor = app === 'electron' && electronCodePatterns.some(pattern => title.includes(pattern));
     
     if (isCodeApp || isCodeWindow || isElectronCodeEditor) {
-      console.log(`💻 Code context detected: app="${app}", title="${title}", codeApp=${isCodeApp}, codeWindow=${isCodeWindow}, electronCode=${isElectronCodeEditor}`);
+      Logger.debug(`💻 Code context detected: app="${app}", title="${title}", codeApp=${isCodeApp}, codeWindow=${isCodeWindow}, electronCode=${isElectronCodeEditor}`);
       return 'code';
     }
     
     // Debug log for default case
-    console.log(`🔍 Default context: app="${app}", title="${title}"`);
+    Logger.debug(`🔍 Default context: app="${app}", title="${title}"`);
     return 'default';
   }
 }

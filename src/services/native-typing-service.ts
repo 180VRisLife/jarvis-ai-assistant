@@ -45,30 +45,30 @@ export class NativeTypingService {
       
       if (!foundPath) {
         const errorMsg = `Native typing monitor module not found. Searched paths: ${possiblePaths.join(', ')}`;
-        console.error(errorMsg);
+        Logger.error(errorMsg);
         throw new Error(errorMsg);
       }
       
       // Load the native module using eval('require') to bypass webpack
       this.typingMonitor = nodeRequire(foundPath);
       
-      console.log('Native typing monitor module loaded successfully');
+      Logger.debug('Native typing monitor module loaded successfully');
       return true;
     } catch (error) {
-      console.error('Failed to load native typing monitor module:', error);
-      console.error('💡 Make sure to run: npm run build:native');
+      Logger.error('Failed to load native typing monitor module:', error);
+      Logger.error('💡 Make sure to run: npm run build:native');
       return false;
     }
   }
 
   start(): boolean {
     if (this.isActive) {
-      console.log('Typing monitor already running');
+      Logger.debug('Typing monitor already running');
       return false;
     }
 
     if (!this.loadNativeModule()) {
-      console.error('Native typing monitor module not loaded');
+      Logger.error('Native typing monitor module not loaded');
       return false;
     }
 
@@ -76,34 +76,34 @@ export class NativeTypingService {
       // Check accessibility permissions
       const hasPermissions = this.typingMonitor!.checkAccessibilityPermissions();
       if (!hasPermissions) {
-        console.warn('Accessibility permissions required for typing monitoring');
-        console.log('Please enable in System Settings > Privacy & Security > Accessibility');
+        Logger.warning('Accessibility permissions required for typing monitoring');
+        Logger.debug('Please enable in System Settings > Privacy & Security > Accessibility');
         return false;
       }
 
       // Start monitoring with callback
       this.typingMonitor!.startMonitoring((event: string) => {
         if (event === 'TYPING_DETECTED') {
-          console.log('Typing activity detected');
+          Logger.debug('Typing activity detected');
           this.onTyping?.();
         }
       });
 
       this.isActive = true;
-      console.log('Native typing monitoring started successfully');
+      Logger.debug('Native typing monitoring started successfully');
       return true;
     } catch (error) {
-      console.error('Failed to start typing monitoring:', error);
+      Logger.error('Failed to start typing monitoring:', error);
       return false;
     }
   }
 
   stop(): void {
     if (this.typingMonitor && this.isActive) {
-      console.log('Stopping typing monitoring');
+      Logger.debug('Stopping typing monitoring');
       this.typingMonitor.stopMonitoring();
       this.isActive = false;
-      console.log('Typing monitoring stopped');
+      Logger.debug('Typing monitoring stopped');
     }
   }
 

@@ -115,29 +115,29 @@ Respond with JSON only:
       
       // Route to the selected tool
       switch (routingDecision.tool) {
-        case 'fileSystemTool':
+        case 'fileSystemTool': {
           const { operation = 'read', filePath = '.', ...fileParams } = routingDecision.parameters || {};
           return await fileSystemTool.invoke({ operation, filePath, ...fileParams });
-          
-        case 'fileOrganizerTool':
+        }
+        case 'fileOrganizerTool': {
           const { action = 'organize', directoryPath = '~/Desktop', organizationType = 'by_type' } = routingDecision.parameters || {};
           return await fileOrganizerTool.invoke({ action, directoryPath, organizationType });
-          
-        case 'cliTool':
+        }
+        case 'cliTool': {
           const command = routingDecision.parameters?.command || userQuery;
           return await cliTool.invoke({ command });
-          
+        }
         case 'appLauncherTool':
           return await appLauncherTool.invoke({ command: userQuery });
-          
-        case 'systemInfoTool':
+
+        case 'systemInfoTool': {
           const infoType = routingDecision.parameters?.infoType || 'basic';
           return await systemInfoTool.invoke({ infoType });
-          
-        case 'visionTool':
+        }
+        case 'visionTool': {
           const visionAction = routingDecision.parameters?.action || 'capture';
           return await visionTool.invoke({ action: visionAction, query: userQuery });
-          
+        }
         case 'textResponseTool':
         default:
           return await textResponseTool.invoke({ query: userQuery });

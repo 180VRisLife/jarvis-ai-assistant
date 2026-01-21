@@ -97,7 +97,7 @@ export class UserFeedbackService {
    * Show performance feedback to help users understand speed
    */
   showPerformanceFeedback(transcriptionTimeMs: number, wordCount: number): void {
-    const wordsPerSecond = wordCount / (transcriptionTimeMs / 1000);
+    const _wordsPerSecond = wordCount / (transcriptionTimeMs / 1000);
     
     if (transcriptionTimeMs < 1000) {
       this.showSuccess(`Ultra-fast transcription! (${transcriptionTimeMs}ms)`);

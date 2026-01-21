@@ -191,7 +191,7 @@ export class UpdateService {
     });
   }
 
-  private async installUpdate(dmgPath: string, version: string): Promise<void> {
+  private async installUpdate(dmgPath: string, _version: string): Promise<void> {
     Logger.info('🔧 Installing update...');
     
     try {

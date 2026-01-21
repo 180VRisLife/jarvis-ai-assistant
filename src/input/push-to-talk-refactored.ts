@@ -128,14 +128,9 @@ export class PushToTalkService {
    * Get context-specific keywords for improved transcription accuracy
    */
   getContextKeywords(): string[] {
-    try {
-      // Since we have a text processor, we can get keywords through it
-      // For compatibility, we'll return an empty array if not available
-      return [];
-    } catch (error) {
-      Logger.warning('🔤 [PushToTalk] Failed to get context keywords:', error);
-      return [];
-    }
+    // Since we have a text processor, we can get keywords through it
+    // For compatibility, we'll return an empty array if not available
+    return [];
   }
 
   /**

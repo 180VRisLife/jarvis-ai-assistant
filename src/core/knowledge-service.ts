@@ -1,7 +1,10 @@
 // Minimal MCP client that searches local company memory
 import * as fs from 'fs';
+import { Logger } from '../core/logger';
 import * as path from 'path';
+import { Logger } from '../core/logger';
 import * as os from 'os';
+import { Logger } from '../core/logger';
 
 export interface MCPSearchResult {
   text: string;
@@ -33,7 +36,7 @@ export class MCPClient {
   
   async searchContext(query: string, count: number): Promise<MCPSearchResult[]> {
     if (!fs.existsSync(this.memoryPath)) {
-      console.log('Memory file not found at:', this.memoryPath);
+      Logger.debug('Memory file not found at:', this.memoryPath);
       return [];
     }
     const memory = JSON.parse(fs.readFileSync(this.memoryPath, 'utf8'));
@@ -43,7 +46,7 @@ export class MCPClient {
       .filter((item: any) => queryWords.some(word => item.content.toLowerCase().includes(word)))
       .slice(0, count)
       .map((item: any) => ({ text: item.content }));
-    console.log('Found', results.length, 'RAG results for query:', query);
+    Logger.debug('Found', results.length, 'RAG results for query:', query);
     return results;
   }
 }

@@ -1,3 +1,5 @@
+/* eslint-disable no-console */
+// Console usage is intentional - Logger wraps console with additional features
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';

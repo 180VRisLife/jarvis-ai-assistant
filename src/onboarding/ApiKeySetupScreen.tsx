@@ -16,14 +16,14 @@ const WHISPER_MODELS = [
   { id: 'small', name: 'Small (Multi)', size: '466 MB', speed: 'Medium' },
 ];
 
-const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ onNext, onApiKeysChange }) => {
+const ApiKeySetupScreen: React.FC<ApiKeySetupScreenProps> = ({ _onNext, onApiKeysChange }) => {
   const [deepgramKey, setDeepgramKey] = useState('');
   const [geminiKey, setGeminiKey] = useState('');
   const [showDeepgramKey, setShowDeepgramKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [hasExistingKeys, setHasExistingKeys] = useState(false);
+  const [_hasExistingKeys, setHasExistingKeys] = useState(false);
   const [useLocalWhisper, setUseLocalWhisper] = useState(false);
 
   // Ollama state

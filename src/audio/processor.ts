@@ -81,15 +81,15 @@ export class AudioProcessor {
    */
   static async pasteText(text: string): Promise<boolean> {
     try {
-      console.log('🔧 [Paste] Starting paste operation...');
-      console.log('🔧 [Paste] Text length:', text.length);
-      console.log('🔧 [Paste] Text preview:', text.substring(0, 100));
+      Logger.debug('🔧 [Paste] Starting paste operation...');
+      Logger.debug('🔧 [Paste] Text length:', text.length);
+      Logger.debug('🔧 [Paste] Text preview:', text.substring(0, 100));
 
       // Check system permissions
       const hasPermission = await PasteHelper.checkSystemPermissions();
 
       if (!hasPermission) {
-        console.error('🚫 [Paste] System Events permission denied');
+        Logger.error('🚫 [Paste] System Events permission denied');
         PasteHelper.showFailureNotification('Permission denied - Enable Jarvis in System Preferences > Security & Privacy > Privacy > Accessibility');
         return false;
       }

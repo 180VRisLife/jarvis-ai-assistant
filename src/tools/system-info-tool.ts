@@ -17,7 +17,7 @@ export const systemInfoTool = tool(
       Logger.info('🖥️ [SystemInfo Tool] Getting info:', infoType);
       
       switch (infoType) {
-        case 'basic':
+        case 'basic': {
           const platform = os.platform();
           const arch = os.arch();
           const release = os.release();
@@ -26,7 +26,7 @@ export const systemInfoTool = tool(
           const totalMem = Math.floor(os.totalmem() / 1024 / 1024 / 1024); // GB
           const freeMem = Math.floor(os.freemem() / 1024 / 1024 / 1024); // GB
           const cpus = os.cpus();
-          
+
           return `🖥️ System Information:
 Platform: ${platform} ${arch}
 Release: ${release}
@@ -34,7 +34,7 @@ Hostname: ${hostname}
 Uptime: ${uptime} hours
 CPU: ${cpus[0]?.model || 'Unknown'} (${cpus.length} cores)
 Memory: ${totalMem - freeMem}GB used / ${totalMem}GB total`;
-
+        }
         case 'processes':
           try {
             const { stdout } = await execAsync('ps aux | head -20');
@@ -98,12 +98,12 @@ Memory: ${totalMem - freeMem}GB used / ${totalMem}GB total`;
             return `❌ Cannot get app info: ${error.message}`;
           }
 
-        case 'env':
+        case 'env': {
           const importantEnvs = [
             'USER', 'HOME', 'PATH', 'SHELL', 'LANG', 'NODE_ENV',
             'npm_config_prefix', 'JAVA_HOME', 'PYTHON_PATH'
           ];
-          
+
           let envInfo = '🌍 Environment Variables:\n\n';
           importantEnvs.forEach(envVar => {
             const value = process.env[envVar];
@@ -111,9 +111,9 @@ Memory: ${totalMem - freeMem}GB used / ${totalMem}GB total`;
               envInfo += `${envVar}: ${value}\n`;
             }
           });
-          
-          return envInfo;
 
+          return envInfo;
+        }
         case 'cpu':
           try {
             if (os.platform() === 'darwin') {

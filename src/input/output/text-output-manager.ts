@@ -71,7 +71,7 @@ export class TextOutputManager {
   /**
    * Handle traditional text output
    */
-  private async handleTraditionalOutput(text: string, options: OutputOptions): Promise<OutputResult> {
+  private async handleTraditionalOutput(text: string, _options: OutputOptions): Promise<OutputResult> {
     try {
       await this.textPaster.pasteText(text);
       
@@ -90,7 +90,7 @@ export class TextOutputManager {
   /**
    * Handle streaming text output
    */
-  private async handleStreamingOutput(text: string, options: OutputOptions): Promise<OutputResult> {
+  private async handleStreamingOutput(text: string, _options: OutputOptions): Promise<OutputResult> {
     try {
       await FastStreamingPaster.pasteFast(text);
       

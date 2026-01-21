@@ -1,18 +1,11 @@
 import { clipboard } from 'electron';
 import { Logger } from '../core/logger';
-import { DictionaryEntry } from './node-dictionary';
-
-interface PasteEvent {
-  text: string;
-  timestamp: number;
-  sessionId?: string;
-}
 
 interface CorrectionSuggestion {
   original: string;
   suggested: string;
   confidence: number;
-  context: string;
+  _context: string;
 }
 
 export class CorrectionDetector {
@@ -30,7 +23,7 @@ export class CorrectionDetector {
    * Start monitoring for corrections after Jarvis pastes text
    * Modified to be less intrusive and respect user clipboard
    */
-  startMonitoring(pastedText: string, sessionId?: string): void {
+  startMonitoring(pastedText: string, _sessionId?: string): void {
     this.lastPastedText = pastedText;
     this.lastPasteTime = Date.now();
     
@@ -200,7 +193,7 @@ export class CorrectionDetector {
   /**
    * Calculate confidence score for a word replacement
    */
-  private calculateConfidence(original: string, corrected: string, context: string): number {
+  private calculateConfidence(original: string, corrected: string, _context: string): number {
     const editDistance = this.calculateEditDistance(original, corrected);
     const maxLength = Math.max(original.length, corrected.length);
     const similarity = 1 - (editDistance / maxLength);

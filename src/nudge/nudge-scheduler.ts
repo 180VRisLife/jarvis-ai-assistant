@@ -41,7 +41,7 @@ export class NudgeScheduler {
     
     const hasReachedDailyLimit = activity.todayNudgeCount >= config.maxNudgesPerDay;
     
-    console.log(`🔔 [Nudge] Nudge eligibility check:
+    Logger.debug(`🔔 [Nudge] Nudge eligibility check:
       - Nudges enabled: ${config.enabled}
       - Not dismissed permanently: ${!config.dismissedPermanently}
       - Not nudged in session: ${!activity.nudgedInCurrentSession}
@@ -54,11 +54,11 @@ export class NudgeScheduler {
            !hasReachedDailyLimit;
   }
 
-  checkSmartNudge(config: NudgeConfig, activity: UserActivity, now: number, timeSinceLastJarvis: number): boolean {
+  checkSmartNudge(config: NudgeConfig, activity: UserActivity, now: number, _timeSinceLastJarvis: number): boolean {
     const minTypingTime = config.minTypingDuration * 1000;
     
     if (activity.typingSessionDuration < minTypingTime) {
-      console.log(`🔔 [Nudge] Smart nudge: Still building up typing time (${Math.round(activity.typingSessionDuration/1000)}s < ${config.minTypingDuration}s)`);
+      Logger.debug(`🔔 [Nudge] Smart nudge: Still building up typing time (${Math.round(activity.typingSessionDuration/1000)}s < ${config.minTypingDuration}s)`);
       return false;
     }
 
@@ -66,13 +66,13 @@ export class NudgeScheduler {
     const SMART_PAUSE_THRESHOLD = 2000;
     
     if (timeSinceLastTyping < SMART_PAUSE_THRESHOLD) {
-      console.log(`🔔 [Nudge] Smart nudge: User still actively typing (${timeSinceLastTyping}ms since last keystroke)`);
+      Logger.debug(`🔔 [Nudge] Smart nudge: User still actively typing (${timeSinceLastTyping}ms since last keystroke)`);
       return false;
     }
 
     if (activity.lastPauseTime === 0) {
       activity.lastPauseTime = now;
-      console.log(`🔔 [Nudge] Smart nudge: First pause detected, waiting for optimal moment...`);
+      Logger.debug(`🔔 [Nudge] Smart nudge: First pause detected, waiting for optimal moment...`);
       this.scheduleNudgeAfterPause(config, activity);
       return false;
     }
@@ -81,7 +81,7 @@ export class NudgeScheduler {
     const OPTIMAL_PAUSE_TIME = 3000;
     
     if (pauseDuration >= OPTIMAL_PAUSE_TIME && this.shouldShowNudge(config, activity)) {
-      console.log(`🔔 [Nudge] Smart nudge: Optimal pause detected (${pauseDuration}ms), showing nudge`);
+      Logger.debug(`🔔 [Nudge] Smart nudge: Optimal pause detected (${pauseDuration}ms), showing nudge`);
       return true;
     }
 
@@ -92,14 +92,14 @@ export class NudgeScheduler {
     const minTypingTime = config.minTypingDuration * 1000;
     
     if (activity.typingSessionDuration < minTypingTime) {
-      console.log(`🔔 [Nudge] Basic nudge: Not enough typing time (${Math.round(activity.typingSessionDuration/1000)}s < ${config.minTypingDuration}s)`);
+      Logger.debug(`🔔 [Nudge] Basic nudge: Not enough typing time (${Math.round(activity.typingSessionDuration/1000)}s < ${config.minTypingDuration}s)`);
       return false;
     }
 
     const adaptiveTiming = this.getAdaptiveNudgeTiming(config, activity);
     
     if (timeSinceLastJarvis > adaptiveTiming && this.shouldShowNudge(config, activity)) {
-      console.log(`🔔 [Nudge] Basic nudge: Time threshold reached (${Math.round(timeSinceLastJarvis/1000)}s > ${Math.round(adaptiveTiming/1000)}s)`);
+      Logger.debug(`🔔 [Nudge] Basic nudge: Time threshold reached (${Math.round(timeSinceLastJarvis/1000)}s > ${Math.round(adaptiveTiming/1000)}s)`);
       return true;
     }
 
@@ -114,15 +114,15 @@ export class NudgeScheduler {
     this.nudgeCheckTimer = setTimeout(async () => {
       const now = Date.now();
       const timeSinceLastTyping = now - activity.lastTypingTime;
-      const timeSinceLastJarvis = now - activity.lastJarvisUsage;
+      const __timeSinceLastJarvis = now - activity.lastJarvisUsage;
       
       const EXTENDED_PAUSE_TIME = 5000;
       
       if (timeSinceLastTyping >= EXTENDED_PAUSE_TIME && this.shouldShowNudge(config, activity)) {
-        console.log(`🔔 [Nudge] Extended pause detected (${timeSinceLastTyping}ms), showing delayed nudge`);
+        Logger.debug(`🔔 [Nudge] Extended pause detected (${timeSinceLastTyping}ms), showing delayed nudge`);
         await this.onNudgeTriggered();
       } else {
-        console.log(`🔔 [Nudge] User resumed typing during pause, nudge cancelled`);
+        Logger.debug(`🔔 [Nudge] User resumed typing during pause, nudge cancelled`);
       }
     }, 3000);
   }
@@ -137,20 +137,20 @@ export class NudgeScheduler {
     let timing = baseTiming[config.frequency] || baseTiming['medium'];
     
     const nudgeSuccessRate = activity.jarvisUsageCount / Math.max(1, activity.totalNudgesShown);
-    console.log(`🔔 [Nudge] Nudge success rate: ${Math.round(nudgeSuccessRate * 100)}% (${activity.jarvisUsageCount} uses / ${activity.totalNudgesShown} nudges)`);
+    Logger.debug(`🔔 [Nudge] Nudge success rate: ${Math.round(nudgeSuccessRate * 100)}% (${activity.jarvisUsageCount} uses / ${activity.totalNudgesShown} nudges)`);
     
     if (nudgeSuccessRate > 0.7) {
       timing *= 0.8;
-      console.log(`🔔 [Nudge] High success rate - decreasing timing by 20%`);
+      Logger.debug(`🔔 [Nudge] High success rate - decreasing timing by 20%`);
     } else if (nudgeSuccessRate < 0.3) {
       timing *= 1.5;
-      console.log(`🔔 [Nudge] Low success rate - increasing timing by 50%`);
+      Logger.debug(`🔔 [Nudge] Low success rate - increasing timing by 50%`);
     }
     
     if (activity.totalNudgesShown > 20) {
       const experienceMultiplier = 1 + (activity.totalNudgesShown - 20) * 0.05;
       timing *= Math.min(experienceMultiplier, 2.0);
-      console.log(`🔔 [Nudge] Experienced user - applying experience multiplier: ${experienceMultiplier.toFixed(2)}`);
+      Logger.debug(`🔔 [Nudge] Experienced user - applying experience multiplier: ${experienceMultiplier.toFixed(2)}`);
     }
     
     return timing;

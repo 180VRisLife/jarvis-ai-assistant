@@ -22,7 +22,7 @@ export class FastWakeWordDetector {
       const source = this.audioContext.createMediaStreamSource(this.mediaStream);
       this.processor = this.audioContext.createScriptProcessor(4096, 1, 1);
       
-      let audioBuffer: Float32Array[] = [];
+      const audioBuffer: Float32Array[] = [];
       let bufferLength = 0;
       const maxBufferLength = 16000 * 3; // 3 seconds at 16kHz
 

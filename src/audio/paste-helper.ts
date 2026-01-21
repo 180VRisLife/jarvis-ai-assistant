@@ -15,8 +15,8 @@ const permissionCheckInterval = 5 * 60 * 1000; // 5 minutes
 let cachedPermissionStatus = true;
 
 // Fast permission cache for paste operations
-const fastPermissionCache = { valid: false, timestamp: 0 };
-const FAST_CACHE_DURATION = 30000; // 30 seconds
+const _fastPermissionCache = { valid: false, timestamp: 0 };
+const _FAST_CACHE_DURATION = 30000; // 30 seconds
 
 /**
  * Check if the app has system permissions for accessibility (with caching)
@@ -239,7 +239,7 @@ export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
 
         const success = code === 0 && output.includes('success');
         resolve(success);
@@ -249,7 +249,7 @@ export async function pasteWithDirectKeystroke(text: string): Promise<boolean> {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
         resolve(false);
       }, 10000);
 
@@ -308,7 +308,7 @@ export async function pasteWithFocusCheck(text: string): Promise<boolean> {
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
 
         const success = code === 0 && output.includes('success');
         resolve(success);
@@ -318,7 +318,7 @@ export async function pasteWithFocusCheck(text: string): Promise<boolean> {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
         resolve(false);
       }, 10000);
 
@@ -390,7 +390,7 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
 
         const success = code === 0 && output.includes('success');
         if (!success && errorOutput) {
@@ -406,7 +406,7 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
         Logger.warning('⏱️ [NotesApp] Timeout - operation took too long');
         resolve(false);
       }, 8000);
@@ -415,7 +415,7 @@ export async function pasteToNotesApp(text: string): Promise<boolean> {
       Logger.error('❌ [NotesApp] Paste error:', error);
       try {
         fs.unlinkSync(tempFile);
-      } catch (e) { }
+      } catch { /* Ignore cleanup errors */ }
       resolve(false);
     }
   });
@@ -491,7 +491,7 @@ export async function pasteForWebApps(text: string): Promise<boolean> {
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
 
         const success = code === 0 && output.includes('success');
         if (!success && errorOutput) {
@@ -507,7 +507,7 @@ export async function pasteForWebApps(text: string): Promise<boolean> {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
         Logger.warning('📧 [WebAppPaste] Timeout - operation took too long');
         resolve(false);
       }, 15000);
@@ -564,7 +564,7 @@ export async function directTypeMethod(text: string): Promise<boolean> {
       result.on('close', (code) => {
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
 
         const success = code === 0 && output.includes('success');
         resolve(success);
@@ -574,7 +574,7 @@ export async function directTypeMethod(text: string): Promise<boolean> {
         result.kill();
         try {
           fs.unlinkSync(tempFile);
-        } catch (e) { }
+        } catch { /* Ignore cleanup errors */ }
         resolve(false);
       }, 6000);
 

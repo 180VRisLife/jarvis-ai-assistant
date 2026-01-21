@@ -29,7 +29,7 @@ export class AssistantCoordinator {
   /**
    * Process transcription through assistant and context detection
    */
-  async processTranscription(transcriptionText: string, sessionId: string): Promise<AssistantResult> {
+  async processTranscription(transcriptionText: string, _sessionId: string): Promise<AssistantResult> {
     try {
       Logger.info(`🤖 [Assistant] Processing transcription: "${transcriptionText}"`);
 

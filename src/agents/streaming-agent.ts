@@ -10,18 +10,18 @@ export class StreamingJarvisAgent {
   }
 
   async processQueryStreaming(
-    query: string, 
+    query: string,
     onChunk: (chunk: string) => void,
-    userContext?: any
+    _userContext?: any
   ): Promise<void> {
-    console.log(`🌊 [Streaming] Processing: "${query}"`);
+    Logger.debug(`🌊 [Streaming] Processing: "${query}"`);
 
     try {
       // Route the query
       const route = this.routeQuery(query);
       
       if (route.type === 'text_generation') {
-        await this.streamTextGeneration(query, onChunk, userContext);
+        await this.streamTextGeneration(query, onChunk, _userContext);
       } else {
         // For tool calls, provide immediate feedback then execute
         onChunk(`Processing ${route.type}...\n`);
@@ -34,9 +34,9 @@ export class StreamingJarvisAgent {
   }
 
   private async streamTextGeneration(
-    query: string, 
+    query: string,
     onChunk: (chunk: string) => void,
-    userContext?: any
+    _userContext?: any
   ): Promise<void> {
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',

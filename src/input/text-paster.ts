@@ -59,7 +59,7 @@ export class TextPaster {
       });
       
       // Track timing for tutorial
-      const pasteTime = 0; // No actual paste
+      const _pasteTime = 0; // No actual paste
       const keyReleaseTime = (global as any).keyReleaseTime || 0;
       const totalEndToEndTime = Date.now() - keyReleaseTime;
       
@@ -72,7 +72,7 @@ export class TextPaster {
     try {
       const pasteStartTime = Date.now();
       const pasteSuccess = await AudioProcessor.pasteText(smartText);
-      const pasteTime = Date.now() - pasteStartTime;
+      const _pasteTime = Date.now() - pasteStartTime;
       const keyReleaseTime = (global as any).keyReleaseTime || 0;
       const totalEndToEndTime = Date.now() - keyReleaseTime;
 
@@ -223,7 +223,7 @@ export class TextPaster {
           const pasteProcess = spawn('osascript', ['-e', pasteScript]);
           
           pasteProcess.on('close', (pasteCode) => {
-            const pasteTime = Date.now() - pasteStartTime;
+            const _pasteTime = Date.now() - pasteStartTime;
             if (pasteCode === 0) {
               Logger.success(`Auto-pasted with clipboard preservation: ${text.substring(0, 50)}...`);
               Logger.performance('Direct paste operation', pasteTime);

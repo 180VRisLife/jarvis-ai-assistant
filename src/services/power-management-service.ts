@@ -7,11 +7,12 @@
  */
 
 import { powerMonitor } from 'electron';
+import { Logger } from '../core/logger';
 
 // Simple logger interface for this service
 const Logger = {
-  info: (message: string, ...args: any[]) => console.log(message, ...args),
-  error: (message: string, ...args: any[]) => console.error(message, ...args)
+  info: (message: string, ...args: any[]) => Logger.debug(message, ...args),
+  error: (message: string, ...args: any[]) => Logger.error(message, ...args)
 };
 
 export class PowerManagementService {
@@ -110,7 +111,7 @@ export class PowerManagementService {
     Logger.info('✅ [PowerManagement] Clean shutdown completed');
   }
 
-  public registerService(serviceName: string, serviceInstance?: any): void {
+  public registerService(serviceName: string, _serviceInstance?: any): void {
     this.activeServices.add(serviceName);
     Logger.info(`📝 [PowerManagement] Registered service: ${serviceName}`);
   }

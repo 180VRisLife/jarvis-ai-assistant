@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import { Logger } from './core/logger';
 
 // Preload side-effect import sets up IPC bridge for renderer/main
 
@@ -6,14 +7,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getStats: () => ipcRenderer.invoke('get-stats'),
   refreshAnalytics: () => ipcRenderer.invoke('refresh-analytics'),
   onStatsUpdate: (callback: (stats: any) => void) => {
-    console.log('📊 [Preload] Setting up onStatsUpdate listener');
+    Logger.debug('📊 [Preload] Setting up onStatsUpdate listener');
     const listener = (_event: any, stats: any) => {
-      console.log('📊 [Preload] Received stats-update event:', stats);
+      Logger.debug('📊 [Preload] Received stats-update event:', stats);
       callback(stats);
     };
     ipcRenderer.on('stats-update', listener);
     return () => {
-      console.log('📊 [Preload] Removing onStatsUpdate listener');
+      Logger.debug('📊 [Preload] Removing onStatsUpdate listener');
       ipcRenderer.removeListener('stats-update', listener);
     };
   },
@@ -43,27 +44,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on(`fn-key-${event}`, callback);
   },
   onFnKeyStateChange: (callback: (event: any, isPressed: boolean) => void) => {
-    console.log('🎯 [Preload] Setting up onFnKeyStateChange listener');
+    Logger.debug('🎯 [Preload] Setting up onFnKeyStateChange listener');
     // Listen for Fn key state changes for tutorial purposes
     ipcRenderer.on('fn-key-state-change', (event, isPressed) => {
-      console.log('🎯 [Preload] Received fn-key-state-change event:', { isPressed });
+      Logger.debug('🎯 [Preload] Received fn-key-state-change event:', { isPressed });
       callback(event, isPressed);
     });
   },
 
   // Push-to-talk state handlers for tutorial screens
   onPushToTalkStateChange: (callback: (isActive: boolean) => void) => {
-    console.log('🎯 [Preload] Setting up onPushToTalkStateChange listener');
+    Logger.debug('🎯 [Preload] Setting up onPushToTalkStateChange listener');
     ipcRenderer.on('push-to-talk-state-change', (_event, isActive) => {
-      console.log('🎯 [Preload] Received push-to-talk-state-change event:', { isActive });
+      Logger.debug('🎯 [Preload] Received push-to-talk-state-change event:', { isActive });
       callback(isActive);
     });
   },
 
   onTranscriptionStateChange: (callback: (isTranscribing: boolean) => void) => {
-    console.log('🎯 [Preload] Setting up onTranscriptionStateChange listener');
+    Logger.debug('🎯 [Preload] Setting up onTranscriptionStateChange listener');
     ipcRenderer.on('transcription-state-change', (_event, isTranscribing) => {
-      console.log('🎯 [Preload] Received transcription-state-change event:', { isTranscribing });
+      Logger.debug('🎯 [Preload] Received transcription-state-change event:', { isTranscribing });
       callback(isTranscribing);
     });
   },
@@ -111,9 +112,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Nudge settings methods
   nudgeGetSettings: () => ipcRenderer.invoke('nudge:get-settings'),
   nudgeUpdateSettings: (settings: any) => {
-    console.log('[Preload] nudgeUpdateSettings called with:', settings);
+    Logger.debug('[Preload] nudgeUpdateSettings called with:', settings);
     if (!settings || typeof settings !== 'object') {
-      console.error('[Preload] Invalid settings passed to nudgeUpdateSettings:', settings);
+      Logger.error('[Preload] Invalid settings passed to nudgeUpdateSettings:', settings);
       return Promise.reject(new Error('Invalid settings: must be an object'));
     }
     return ipcRenderer.invoke('nudge:update-settings', settings);

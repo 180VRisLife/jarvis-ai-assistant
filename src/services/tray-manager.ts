@@ -1,4 +1,4 @@
-import { app, Tray, Menu, nativeImage, nativeTheme, shell } from 'electron';
+import { app, Tray, Menu, nativeImage, nativeTheme } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Logger } from '../core/logger';

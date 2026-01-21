@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import OnboardingFlow from './onboarding/OnboardingFlow';
@@ -8,7 +9,7 @@ const AppContent: React.FC = () => {
   const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(false);
   const [checkingOnboarding, setCheckingOnboarding] = useState(false);
   const [dashboardData, setDashboardData] = useState(null);
-  const [loadingData, setLoadingData] = useState(false);
+  const [_loadingData, setLoadingData] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
   // Debug user state changes

@@ -31,7 +31,7 @@ export class AudioSessionManager {
       // Try to start recording with fallback logic
       let success = false;
       let usedNative = false;
-      let nativeFailed = false;
+      let _nativeFailed = false;
 
       // Check if we're using native recorder and try to start it
       if (this.audioRecorder instanceof NativeAudioRecorder) {
@@ -45,11 +45,11 @@ export class AudioSessionManager {
             usedNative = true;
           } else {
             Logger.warning('⚠️ ⚠️ Native recording failed to start - triggering fallback');
-            nativeFailed = true;
+            _nativeFailed = true;
           }
         } catch (error) {
           Logger.error('❌ Native recording error:', error);
-          nativeFailed = true;
+          _nativeFailed = true;
           success = false;
         }
         

@@ -2,7 +2,7 @@ import { Logger } from '../../core/logger';
 import { ContextAwarePostProcessor } from '../context-aware-post-processor';
 import { AppSettingsService } from '../../services/app-settings-service';
 import { OptimizedAnalyticsManager } from '../../analytics/optimized-analytics-manager';
-import { PostProcessingOptions, PostProcessingResult } from '../types/push-to-talk-types';
+// import { PostProcessingOptions, PostProcessingResult } from '../types/push-to-talk-types';
 import { AppContext } from '../../interfaces/transcription';
 
 export class TextProcessor {
@@ -23,7 +23,7 @@ export class TextProcessor {
 
     // Check if user has post-processing enabled
     let userWantsPostProcessing = false;
-    let isEmailContext = appContext.type === 'email';
+    const isEmailContext = appContext.type === 'email';
     
     try {
       const appSettings = AppSettingsService.getInstance();

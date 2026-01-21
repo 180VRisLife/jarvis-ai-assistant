@@ -1,5 +1,5 @@
 import { MCPClient, MCPSearchResult } from './knowledge-service';
-import { CloudLLMService, StreamingLLMResponse } from './llm-service';
+// import { CloudLLMService, StreamingLLMResponse } from './llm-service';
 import { agentManager } from './agent-manager';
 import { Logger } from './logger';
 
@@ -70,7 +70,7 @@ export class JarvisCore {
       const contextTexts = context.map((c: MCPSearchResult) => c.text);
       const fullTranscript = this.transcriptBuffer.join('\n');
 
-      let suggestion = '';
+      const _suggestion = '';
       let firstTokenTime = 0;
       let gotFirstToken = false;
 

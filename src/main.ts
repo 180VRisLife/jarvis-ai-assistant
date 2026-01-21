@@ -13,7 +13,7 @@ process.on('unhandledRejection', (reason) => {
 import { SecureAPIService } from './services/secure-api-service';
 import { UpdateService } from './services/update-service';
 import { AppSettingsService } from './services/app-settings-service';
-import { PrivacyConsentService } from './services/privacy-consent-service';
+// import { PrivacyConsentService } from './services/privacy-consent-service';
 import { PowerManagementService } from './services/power-management-service';
 import { agentManager } from './core/agent-manager';
 import { AuthService, AuthState } from './services/auth-service';
@@ -22,7 +22,7 @@ import { AnalysisOverlayService } from './services/analysis-overlay-service';
 import { AppState } from './services/app-state';
 import { MenuService } from './services/menu-service';
 import { ShortcutService } from './services/shortcut-service';
-import { TranscriptionService } from './services/transcription-service';
+// import { TranscriptionService } from './services/transcription-service';
 import { AppLifecycleService } from './services/app-lifecycle-service';
 import { StartupOptimizer } from './services/startup-optimizer';
 import { LocalWhisperTranscriber } from './transcription/local-whisper-transcriber';
@@ -44,7 +44,7 @@ try {
   Logger.warning('Error loading .env for configuration:', error);
 }
 
-import { app, BrowserWindow, ipcMain, screen, globalShortcut, Tray, Menu, nativeImage, shell, nativeTheme, systemPreferences } from 'electron';
+import { app, BrowserWindow, ipcMain, globalShortcut } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -56,7 +56,7 @@ const authService = AuthService.getInstance();
 export const loadAuthState = () => authService.loadAuthState();
 
 import { OptimizedAnalyticsManager } from './analytics/optimized-analytics-manager';
-import { JarvisCore, SuggestionResult } from './core/jarvis-core';
+import { JarvisCore } from './core/jarvis-core';
 import { IPCHandlers } from './ipc/ipc-handlers';
 import { NudgeIPCHandlers } from './ipc/nudge-ipc-handlers';
 import { PermissionIPCHandlers } from './ipc/permission-ipc-handlers';
@@ -66,13 +66,12 @@ import { DictationIPCHandlers } from './ipc/dictation-ipc-handlers';
 import { UpdateIPCHandlers } from './ipc/update-ipc-handlers';
 import { AuthIPCHandlers } from './ipc/auth-ipc-handlers';
 import { ChatIPCHandlers } from './ipc/chat-ipc-handlers';
-import { ContextDetector } from './context/context-detector';
+// import { ContextDetector } from './context/context-detector';
 import { UniversalKeyService } from './input/universal-key-service';
 import { PushToTalkService } from './input/push-to-talk-refactored';
 import { AudioProcessor } from './audio/processor';
-import { nodeDictionaryService } from './services/node-dictionary';
 import { UserNudgeService } from './nudge';
-import { SoundPlayer } from './utils/sound-player';
+// import { SoundPlayer } from './utils/sound-player';
 
 // Get service instances
 const windowManager = WindowManager.getInstance();
@@ -80,21 +79,19 @@ const analysisOverlayService = AnalysisOverlayService.getInstance();
 const appState = AppState.getInstance();
 const menuService = MenuService.getInstance();
 const shortcutService = ShortcutService.getInstance();
-const transcriptionService = TranscriptionService.getInstance();
 const appLifecycleService = AppLifecycleService.getInstance();
 const startupOptimizer = StartupOptimizer.getInstance();
 
 // Window references - using getters to maintain compatibility
 let suggestionWindow: BrowserWindow | null = null;
 let waveformWindow: BrowserWindow | null = null;
-let dashboardWindow: BrowserWindow | null = null;
-let analysisOverlayWindow: BrowserWindow | null = null;
+const dashboardWindow: BrowserWindow | null = null;
+const _analysisOverlayWindow: BrowserWindow | null = null;
 
 // Helper functions for window access
 const getWaveformWindow = () => waveformWindow || windowManager.getWindow('waveform');
 const getDashboardWindow = () => dashboardWindow || windowManager.getWindow('dashboard');
 const getSuggestionWindow = () => suggestionWindow || windowManager.getWindow('suggestion');
-const getAnalysisOverlayWindow = () => analysisOverlayWindow || windowManager.getWindow('analysisOverlay');
 
 // ESC cancel shortcut management - allows user to cancel during recording/transcribing
 function registerEscCancelShortcut(): void {
@@ -157,22 +154,18 @@ function clearWaveformHideTimeout(): void {
 }
 
 // tray is now managed by MenuService
-let contextDetector = new ContextDetector();
 let transcripts: Array<{ id: number; text: string; timestamp: string; suggestion?: string }> = [];
 let jarvisCore: JarvisCore;
 let currentSessionId: string | null = null;
-let conversationContext: string[] = [];
-let currentAudioFile: string | null = null;
 let universalKeyService: UniversalKeyService | null = null;
 let pushToTalkService: PushToTalkService | null = null;
 let isVoiceTutorialMode = false; // Track if we're in voice tutorial mode
-let isEmailTutorialMode = false; // Track if we're in email tutorial mode
-let analyticsManager = new OptimizedAnalyticsManager();
-let updateService = new UpdateService();
+const _isEmailTutorialMode = false; // Track if we're in email tutorial mode
+const analyticsManager = new OptimizedAnalyticsManager();
+const updateService = new UpdateService();
 let userNudgeService: UserNudgeService | null = null;
 let isEscCancelShortcutRegistered = false;
 let waveformHideTimeout: NodeJS.Timeout | null = null; // Track timeout so we can cancel it
-let privacyConsentService = PrivacyConsentService.getInstance();
 let isHotkeyMonitoringActive = false;
 let lastActiveHotkey: string | null = null;
 
@@ -204,7 +197,6 @@ NudgeIPCHandlers.getInstance().registerHandlers();
 
 Logger.info('📊 [IPC] IPC handlers registered at module initialization');
 // Dictation mode is now tracked in AppState service
-let soundPlayer = SoundPlayer.getInstance();
 
 // Set updateService in menuService
 menuService.setUpdateService(updateService);
@@ -217,13 +209,9 @@ appLifecycleService.setHotkeyStopCallback(() => stopHotkeyMonitoring());
 
 // Fn key state tracking
 let lastFnKeyTime = 0;
-let fnKeyPressed = false;
-let spaceKeyPressed = false;
 let pendingSingleTapTimeout: NodeJS.Timeout | null = null; // For delaying single-tap processing
 let isHandsFreeModeActive = false;
 let pendingHandsFreeStop = false; // Prevent multiple stop requests
-
-const DEMO_MODE = process.env.DEMO_MODE === 'true';
 
 // Setup global listeners once
 function setupGlobalListeners() {
@@ -413,11 +401,11 @@ function createDashboardWindow() {
             if (window.nudgeTypingListener) return; // Already added
             
             function recordTyping() {
-              console.log('🔔 [Nudge] Recording typing event');
+              Logger.debug('🔔 [Nudge] Recording typing event');
               if (window.electronAPI?.nudgeRecordTyping) {
                 window.electronAPI.nudgeRecordTyping();
               } else {
-                console.error('🔔 [Nudge] electronAPI.nudgeRecordTyping not available');
+                Logger.error('🔔 [Nudge] electronAPI.nudgeRecordTyping not available');
               }
             }
             
@@ -428,7 +416,7 @@ function createDashboardWindow() {
             document.addEventListener('input', recordTyping);
             
             window.nudgeTypingListener = true;
-            console.log('🔔 [Nudge] Global typing detection enabled');
+            Logger.debug('🔔 [Nudge] Global typing detection enabled');
           })();
         `);
         Logger.info('🔔 [Nudge] Enabled global typing detection in dashboard');
@@ -437,20 +425,12 @@ function createDashboardWindow() {
   });
 }
 
-function createAnalysisOverlay() {
-  analysisOverlayWindow = analysisOverlayService.createOverlayWindow();
-}
-
 function showAnalysisOverlay(analysisText: string, isVisionQuery: boolean = false, loadingMessage?: string) {
   analysisOverlayService.showOverlay(analysisText, isVisionQuery, loadingMessage);
 }
 
 function sendAnalysisResult(analysisText: string, isConversation: boolean = false) {
   analysisOverlayService.sendAnalysisResult(analysisText, isConversation);
-}
-
-function hideAnalysisOverlay() {
-  analysisOverlayService.hideOverlay();
 }
 
 // Functions to manage dictation mode state
@@ -472,12 +452,6 @@ function createApplicationMenu() {
   menuService.createApplicationMenu();
 }
 
-async function startPushToTalk() {
-  // Start recording immediately - audio system should already be pre-warmed
-  if (pushToTalkService) {
-    await pushToTalkService.start();
-  }
-}
 
 async function stopPushToTalk() {
   // The push-to-talk service handles its own timing and transcription internally
@@ -497,14 +471,6 @@ async function stopPushToTalk() {
   }
 }
 
-function sendStatus(message: string, recording: boolean) {
-  // Recording status removed from overlay
-}
-
-async function transcribeAndPaste(audioFile: string) {
-  // This function is now handled by push-to-talk service
-  Logger.info('Transcription and pasting handled by push-to-talk service');
-}
 
 // Dictation IPC handlers moved to DictationIPCHandlers class
 
@@ -561,7 +527,6 @@ async function activateOverlaysAndShortcuts() {
     Logger.info('▶ [Overlays] Starting activation of overlays and shortcuts...');
 
     // Check privacy consent first - this is required for third-party data processing
-    const appSettings = AppSettingsService.getInstance();
 
     // Privacy consent disabled for now - will be part of onboarding flow
     // TODO: Integrate privacy consent into proper onboarding flow
@@ -697,7 +662,6 @@ ipcMain.on('new-session', () => {
     pushToTalkService.stop().catch(error => Logger.error('Error stopping recording:', error));
   }
   transcripts = []; // Clear existing transcripts
-  conversationContext = []; // Clear conversation context
 
   // Clear correction detector state
   if ((global as any).correctionDetector) {
@@ -715,86 +679,6 @@ ipcMain.on('new-session', () => {
 });
 
 // registerGlobalShortcuts function moved to ShortcutService
-function registerGlobalShortcuts_REMOVED() {
-
-  // First, unregister any existing shortcuts to avoid conflicts
-  globalShortcut.unregisterAll();
-
-  // Register Cmd+Option+J for opening dashboard (J for Jarvis, Option to avoid conflicts)
-  // Try different variations for cross-platform compatibility
-  let dashboardShortcut = false;
-  const shortcutVariations = [
-    'CommandOrControl+Option+J',  // macOS native
-    'CommandOrControl+Alt+J',     // Cross-platform
-    'Cmd+Option+J',               // macOS specific
-    'Cmd+Alt+J'                   // Alternative
-  ];
-
-  for (const shortcut of shortcutVariations) {
-    if (!dashboardShortcut) {
-      try {
-        dashboardShortcut = globalShortcut.register(shortcut, () => {
-          Logger.info(`🎯 ${shortcut} pressed - Opening Jarvis Dashboard`);
-          try {
-            if (!dashboardWindow) {
-              Logger.info('🎯 Creating new dashboard window');
-              createDashboardWindow();
-            } else {
-              Logger.info('🎯 Showing existing dashboard window');
-              dashboardWindow.show();
-              dashboardWindow.focus();
-              // Ensure window is brought to front on macOS
-              if (process.platform === 'darwin') {
-                app.focus();
-              }
-            }
-          } catch (error) {
-            Logger.error('🎯 Error opening dashboard:', error);
-          }
-        });
-
-        if (dashboardShortcut) {
-          Logger.success(`✅ Dashboard shortcut registered successfully: ${shortcut}`);
-          break;
-        }
-      } catch (error) {
-        Logger.warning(`▲ Failed to register ${shortcut}:`, error);
-      }
-    }
-  }
-
-  if (!dashboardShortcut) {
-    Logger.error('❌ All dashboard shortcut registration attempts failed');
-    // Try a simpler fallback shortcut
-    try {
-      const fallbackShortcut = globalShortcut.register('CommandOrControl+Shift+D', () => {
-        Logger.info('🎯 Fallback Command+Shift+D pressed - Opening Jarvis Dashboard');
-        if (!dashboardWindow) {
-          createDashboardWindow();
-        } else {
-          dashboardWindow.show();
-          dashboardWindow.focus();
-        }
-      });
-
-      if (fallbackShortcut) {
-        Logger.info('✅ Fallback Command+Shift+D dashboard shortcut registered');
-      }
-    } catch (error) {
-      Logger.error('❌ Even fallback shortcut registration failed:', error);
-    }
-  }
-
-  // Global shortcuts are now handled by Fn key monitoring and push-to-talk system
-  // No additional shortcuts needed for dictation as we use push-to-talk with Fn key
-
-  Logger.success('✅ [Overlays] Global shortcuts configured successfully');
-
-  Logger.info('Transcription: GPT-4o-mini-transcribe → Local Whisper (fallback)');
-
-  // Start Fn key monitoring for push-to-talk
-  startHotkeyMonitoring();
-}
 
 function startHotkeyMonitoring() {
   // Get the current hotkey setting
@@ -1046,14 +930,6 @@ SettingsIPCHandlers.getInstance().setHotkeyCallbacks(
 
 // Open-source build: Subscription always returns 'pro' status
 // These functions are kept for backwards compatibility but are simplified
-async function checkSubscriptionStatusFromMain(_userId: string): Promise<any> {
-  // Open-source build: All features unlocked
-  return { status: 'pro' };
-}
-
-function clearSubscriptionCache() {
-  // No-op in open-source build
-}
 
 async function handleHotkeyDown() {
   const keyDownStartTime = performance.now();
@@ -1171,23 +1047,23 @@ async function handleHotkeyDown() {
   Logger.debug(`⚡ [TIMING] After timeout clear: ${(afterTimeoutClearTime - keyDownStartTime).toFixed(2)}ms`);
 
   // Check for double-tap (quick second press) - adjusted timing for optimized debounce
-  console.log(`🎯 [DoubleTap] Evaluating: last=${lastFnKeyTime}, current=${currentTime}, diff=${timeSinceLastPress}ms`);
+  Logger.debug(`🎯 [DoubleTap] Evaluating: last=${lastFnKeyTime}, current=${currentTime}, diff=${timeSinceLastPress}ms`);
   if (lastFnKeyTime > 0 && timeSinceLastPress < 1000 && timeSinceLastPress > 5) {
     const doubleTapDetectedTime = performance.now();
-    console.log(`⚡ [TIMING] Double-tap detected at: ${(doubleTapDetectedTime - keyDownStartTime).toFixed(2)}ms`);
+    Logger.debug(`⚡ [TIMING] Double-tap detected at: ${(doubleTapDetectedTime - keyDownStartTime).toFixed(2)}ms`);
 
-    console.log('🎯 Double Fn key detected - entering hands-free dictation');
-    console.log(`🎯 [DoubleTap] Double-tap confirmed: ${timeSinceLastPress}ms between presses`);
+    Logger.debug('🎯 Double Fn key detected - entering hands-free dictation');
+    Logger.debug(`🎯 [DoubleTap] Double-tap confirmed: ${timeSinceLastPress}ms between presses`);
 
     // Cancel any active operation first (including the one we might have just started)
     if (pushToTalkService?.active || pushToTalkService?.transcribing || (pushToTalkService as any)?.startedFromSingleTap) {
-      console.log('🚫 [Cancel] Cancelling active operation BEFORE hands-free mode');
+      Logger.debug('🚫 [Cancel] Cancelling active operation BEFORE hands-free mode');
       if (pushToTalkService) {
         // MUST BE SYNCHRONOUS to avoid race condition
         pushToTalkService.hardStop();
         pushToTalkService.active = false;
         (pushToTalkService as any).startedFromSingleTap = false;
-        console.log('✅ [Cancel] Synchronous hardStop completed');
+        Logger.debug('✅ [Cancel] Synchronous hardStop completed');
       }
       waveformWindow?.webContents.send('push-to-talk-cancel');
       waveformWindow?.webContents.send('transcription-complete');
@@ -1239,12 +1115,12 @@ async function handleHotkeyDown() {
     // ⚡ HANDS-FREE MODE: Start recording immediately for hands-free dictation
     try {
       if (pushToTalkService) {
-        console.log('🎤 [HandsFree] Calling pushToTalkService.start()');
+        Logger.debug('🎤 [HandsFree] Calling pushToTalkService.start()');
         await pushToTalkService.start();
-        console.log('✅ [HandsFree] Hands-free recording started successfully');
+        Logger.debug('✅ [HandsFree] Hands-free recording started successfully');
       }
     } catch (error) {
-      console.error('❌ [HandsFree] Failed to start hands-free recording:', error);
+      Logger.error('❌ [HandsFree] Failed to start hands-free recording:', error);
       // Reset hands-free mode on error
       isHandsFreeModeActive = false;
       if (pushToTalkService) {
@@ -1397,7 +1273,7 @@ async function handleHotkeyUp() {
   // 🔴 CRITICAL: Check hands-free mode FIRST before sending any stop signals!
   // In hands-free mode, releasing the key should NOT stop recording.
   if (isHandsFreeModeActive || pendingHandsFreeStop) {
-    console.log('🎯 [HandsFree] Key released while hands-free active - NOT stopping recording');
+    Logger.debug('🎯 [HandsFree] Key released while hands-free active - NOT stopping recording');
     // Clear the pending stop flag after a delay to ensure proper cleanup
     if (pendingHandsFreeStop) {
       setTimeout(() => {
@@ -1463,7 +1339,7 @@ async function handleHotkeyUp() {
     // 🕒 START END-TO-END TIMING MEASUREMENT
     const keyReleaseTime = Date.now();
     (global as any).keyReleaseTime = keyReleaseTime;
-    console.log('\x1b[45m\x1b[37m⏱️  [TIMING] Function key released - starting end-to-end measurement\x1b[0m');
+    Logger.debug('\x1b[45m\x1b[37m⏱️  [TIMING] Function key released - starting end-to-end measurement\x1b[0m');
 
     // ⚡ IMMEDIATE UI FEEDBACK - Stop animation and play synthesized sound
     waveformWindow?.webContents.send('push-to-talk-stop');
@@ -1493,7 +1369,7 @@ app.on('open-url', async (event, url) => {
   event.preventDefault();
 
   Logger.info('Protocol URL received:', url);
-  console.log('Protocol URL received:', url);
+  Logger.debug('Protocol URL received:', url);
 
   if (url.startsWith('jarvis://auth/callback')) {
     // Parse OAuth callback parameters (matching electron-app pattern)
